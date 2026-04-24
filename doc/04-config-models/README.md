@@ -1,8 +1,9 @@
-# API Gateway Configuration
+# 설정 리소스 모델
 
-IIP API 게이트웨이의 설정 리소스를 정의합니다.
+IIP API 게이트웨이의 선언적 설정 리소스를 정의한다.
+모든 리소스는 Kubernetes 스타일의 모델(`apiVersion`, `kind`, `metadata`, `spec`)을 따르며, `iip.gateway/v1alpha1` 버전을 사용한다.
 
-모든 리소스는 Kubernetes 스타일의 선언적 모델(`apiVersion`, `kind`, `metadata`, `spec`)을 따르며, `iip.gateway/v1alpha1` 버전을 사용합니다.
+구현 시에는 이 디렉토리를 리소스 파싱, 검증, 렌더링의 기준 스펙으로 사용한다.
 
 ## 트래픽 흐름
 
@@ -27,15 +28,15 @@ Gateway (전역 설정) ─── logging, tracing, metrics ──→ 전체 트
 
 | 파일 | kind | 역할 |
 |------|------|------|
-| [Gateway.md](Gateway.md) | Gateway | APIM 전역 관측성 설정 (logging, tracing, metrics) |
+| [gateway.md](gateway.md) | Gateway | 전역 정책과 관측성 설정 |
 
 ### 핵심 리소스
 
 | 파일 | kind | 역할 |
 |------|------|------|
-| [Listener.md](Listener.md) | Listener | 외부 트래픽을 수신할 포트, 프로토콜, TLS 구성 (인그레스) |
-| [Router.md](Router.md) | Router | 경로/메서드/헤더 기반 트래픽 매칭과 목적지 라우팅 (카나리아/분할 배포 지원) |
-| [Service.md](Service.md) | Service | 백엔드 서버 클러스터, 복원력(retry, circuit breaker), 업스트림 TLS 구성 |
+| [listener.md](listener.md) | Listener | 외부 트래픽을 수신할 포트, 프로토콜, TLS 구성 |
+| [router.md](router.md) | Router | 경로/메서드/헤더 기반 트래픽 매칭과 목적지 라우팅 |
+| [service.md](service.md) | Service | 백엔드 서버 클러스터, 복원력, 업스트림 TLS 구성 |
 
 ### 정책 리소스
 
@@ -43,16 +44,16 @@ Gateway (전역 설정) ─── logging, tracing, metrics ──→ 전체 트
 
 | 파일 | 기본 order | 역할 |
 |------|-----------|------|
-| [Policy-Security.md](Policy-Security.md) | 5 | JWT 검증, IP 필터링, CORS 제어 |
-| [Policy-Traffic.md](Policy-Traffic.md) | 10 | Rate Limit, 동시성 제한, SLA 차등 적용 |
-| [Policy-Enhance.md](Policy-Enhance.md) | 12 | 캐싱 (Memory / Redis / Memcached) |
-| [Policy-Transform.md](Policy-Transform.md) | 15 | 헤더/쿼리 제어, 바디 변환(XML/JSON), 데이터 마스킹 |
+| [policy-security.md](policy-security.md) | 5 | JWT 검증, IP 필터링, CORS 제어 |
+| [policy-traffic.md](policy-traffic.md) | 10 | Rate Limit, 동시성 제한, SLA 차등 적용 |
+| [policy-enhance.md](policy-enhance.md) | 12 | 캐싱 |
+| [policy-transform.md](policy-transform.md) | 15 | 헤더/쿼리 제어, 바디 변환, 데이터 마스킹 |
 
 ### 기타
 
 | 파일 | 역할 |
 |------|------|
-| [Mocking-Service.md](Mocking-Service.md) | 백엔드 없이 API 응답을 시뮬레이션 (stub, 지연, 오류율) |
+| [mocking-service.md](mocking-service.md) | 백엔드 없이 API 응답을 시뮬레이션 |
 
 ## 리소스 관계
 
@@ -107,7 +108,7 @@ Security (5) → Traffic (10) → Enhance (12) → Transform (15)
 
 ## 배포 설정 샘플
 
-아래는 ecommerce 서비스를 게이트웨이에 배포하는 전체 설정 예시입니다. 모든 리소스가 어떻게 연결되는지 보여줍니다.
+아래는 ecommerce 서비스를 게이트웨이에 배포하는 전체 설정 예시다. 모든 리소스가 어떻게 연결되는지 보여준다.
 
 ### 1. Gateway — 전역 관측성
 

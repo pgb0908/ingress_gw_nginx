@@ -1,134 +1,22 @@
-# 개발 명세
-이 문서는 설명용 개요가 아니라 구현 지시서
-개발 에이전트는 이 문서만 읽고 디렉터리 생성, 서비스 구현, API 정의, 테스트 작성까지 바로 시작
+# init_dev 정리 안내
 
-## 1. 구현 범위
-- 데이터 플레인과 제어 플레인의 명확한 분리
-  - 이 프로젝트는 데이터 플레인 구현에 초점을 둠
-- 정책 배포, 검증, 롤백의 자동화
-- 관측성의 기본 완성
-- secret, rate limit, 정책의 외부 시스템 연동
-- 운영자와 서비스 팀이 함께 쓸 수 있는 제품형 구조
+기존 `init_dev.md`에 모여 있던 구현 지시를 주제별 문서로 분리했다.
+이 파일은 하위 문서로 들어가는 호환성 진입점이다.
 
+## 읽는 순서
 
-## 2. 목표
-- 이 프로젝트의 목표는 igress-gateway 데이터 플레인이 목적
-  - 컨트롤 플레인은 외부에 존재
-  - /config에 배포받는 내용 정리
-- 정책 변경을 서비스 배포와 분리한다
-    - 서비스 배포:
-        - 애플리케이션 코드 변경
-        - 새 컨테이너 이미지 배포
-    - 정책 배포:
-        - gateway의 설정, plugin 조합, secret ref, rate limit 값 변경
-        - 새 revision 배포
-        - 서비스는 재배포하지 않음
-    - 즉, 비즈니스 코드 배포와 gateway 정책 배포를 독립적인 릴리스 단위로 만든다
-- route, service, policy 단위 정책을 중앙에서 관리한다
-- gateway를 단일 데모가 아니라 운영 가능한 제품형 시스템으로 만든다
-- Wasm 플러그인을 버전 단위로 배포하고 롤백할 수 있다
-- 장애 시 fallback 규칙과 운영 절차가 코드와 문서에 같이 존재한다
-- 로그, 메트릭, 트레이싱을 통해 요청 단위로 문제를 추적할 수 있다
+1. [문서 루트](README.md)
+2. [프로젝트 개요](01-overview/project-overview.md)
+3. [데이터 플레인 아키텍처](02-architecture/dataplane-architecture.md)
+4. [리비전 배포와 롤백](02-architecture/revision-lifecycle.md)
+5. [플러그인 런타임 계약](03-runtime-contracts/plugin-runtime-contract.md)
+6. [설정 리소스 모델](04-config-models/README.md)
+7. [운영 관측성](05-operations/observability.md)
 
+## 이동된 내용
 
-## 3. 산출물
-- 데이터 플레인 예제 구현
-- `docs/` 운영 절차, 장애 대응, 호환성 규칙 문서
-- `src/` ingress-gateway에 대한  소스 코드
-- `src/tests/` 단위, 통합, 회귀, 장애, 롤백 테스트
-- `src/scripts/` 배포, 검증, 롤백 자동화 스크립트
-
-
-## 4. 핵심 원칙
-
-모든 구현은 아래 원칙을 따라야 한다.
-
-- nginx는 네트워크와 프록시 코어에 집중한다
-- Wasm은 공통 정책 집행에 집중한다
-- 운영 설정은 control plane이 관리하고 control plane이 존재 한다는 가정하에 개발
-- 요청 경로는 stateless에 가깝게 유지한다
-- 정책 배포는 서비스 배포와 분리한다
-- 모든 변경은 검증 가능하고 되돌릴 수 있어야 한다
-- 정책 결정과 실패 원인은 로그와 메트릭에 남아야 한다
-
-## 5. 필수 기능
-
-### 5.1 dataplane
-
-반드시 구현할 기능:
-
-- nginx 기반 ingress
-- 다중 Wasm 체인 실행
-- control plane이 생성한 정적 배포 산출물 로드
-- policy 기반 정책 적용
-- 요청 차단, 허용, 헤더 표준화, trace propagation
-- rate limit 조회
-- fallback 정책 수행
-
-최소 요구사항:
-
-- 설정 파일과 Wasm 모듈을 revision 단위 디렉터리로 로드
-- reload 전 `nginx -t` 검증
-- 실패 시 이전 revision 유지
-
-### 5.2 Plugin Runtime Contract
-
-반드시 정의하고 구현해야 할 계약:
-
-- 플러그인 입력 헤더
-- 플러그인 출력 헤더
-- 공통 메타데이터 키
-- 에러 반환 포맷
-- plugin lifecycle 훅
-- fail-open / fail-close / fail-static-response
-- plugin version compatibility
-
-### 5.3 Observability
-
-반드시 구현할 기능:
-
-- JSON structured access log
-- plugin별 decision log
-- Prometheus metrics endpoint
-- OpenTelemetry trace context propagation
-- request_id, trace_id, tenant_id, route_id, plugin_chain, revision 노출
-
-최소 메트릭:
-
-- `gateway_requests_total`
-- `gateway_request_duration_ms`
-- `gateway_plugin_executions_total`
-- `gateway_plugin_failures_total`
-- `gateway_policy_denied_total`
-- `gateway_rate_limit_denied_total`
-- `gateway_reload_total`
-- `gateway_reload_failures_total`
-
-## 권장 디렉토리 구조
-
-```text
-
-├── src
-│   ├── gateway/
-│   │   └── 실제 nginx 바이너리와 conf가 존재
-│   ├── plugins/
-│   │   ├── auth-filter/
-│   │   ├── tenant-filter/
-│   │   ├── header-filter/
-│   │   ├── rate-limit-filter/
-│   │   └── observe-filter/
-│   ├── runtime-config/
-│   │   ├── revisions/
-│   │   └── current -> revisions/<revision>
-│   ├── upstreams/
-│   └── README.md
-├── docs/
-│   ├── configs/
-│   └── etc..
-└── tests/
-    ├── unit/
-    ├── integration/
-    ├── e2e/
-    └── chaos/
-```
-
+- 구현 범위, 목표, 산출물, 핵심 원칙: `01-overview/`
+- dataplane 책임과 revision 반영 구조: `02-architecture/`
+- plugin 입력/출력, failure mode, 호환성: `03-runtime-contracts/`
+- Gateway, Listener, Router, Service, Policy 리소스 스펙: `04-config-models/`
+- observability, 배포 검증, rollback 절차: `05-operations/`
