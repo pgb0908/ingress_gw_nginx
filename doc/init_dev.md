@@ -38,24 +38,8 @@
 - `src/tests/` 단위, 통합, 회귀, 장애, 롤백 테스트
 - `src/scripts/` 배포, 검증, 롤백 자동화 스크립트
 
-## 4. 아키텍처
 
-```text
-Client
-  |
-  v
-nginx + wasm data plane
-  |
-  +--> auth/filter chain
-  +--> route decision
-  +--> rate limit check
-  +--> upstream services
-  |
-  +--> metrics/logs/traces
-
-```
-
-## 5. 핵심 원칙
+## 4. 핵심 원칙
 
 모든 구현은 아래 원칙을 따라야 한다.
 
@@ -66,3 +50,85 @@ nginx + wasm data plane
 - 정책 배포는 서비스 배포와 분리한다
 - 모든 변경은 검증 가능하고 되돌릴 수 있어야 한다
 - 정책 결정과 실패 원인은 로그와 메트릭에 남아야 한다
+
+## 5. 필수 기능
+
+### 5.1 dataplane
+
+반드시 구현할 기능:
+
+- nginx 기반 ingress
+- 다중 Wasm 체인 실행
+- control plane이 생성한 정적 배포 산출물 로드
+- policy 기반 정책 적용
+- 요청 차단, 허용, 헤더 표준화, trace propagation
+- rate limit 조회
+- fallback 정책 수행
+
+최소 요구사항:
+
+- 설정 파일과 Wasm 모듈을 revision 단위 디렉터리로 로드
+- reload 전 `nginx -t` 검증
+- 실패 시 이전 revision 유지
+
+### 5.2 Plugin Runtime Contract
+
+반드시 정의하고 구현해야 할 계약:
+
+- 플러그인 입력 헤더
+- 플러그인 출력 헤더
+- 공통 메타데이터 키
+- 에러 반환 포맷
+- plugin lifecycle 훅
+- fail-open / fail-close / fail-static-response
+- plugin version compatibility
+
+### 5.3 Observability
+
+반드시 구현할 기능:
+
+- JSON structured access log
+- plugin별 decision log
+- Prometheus metrics endpoint
+- OpenTelemetry trace context propagation
+- request_id, trace_id, tenant_id, route_id, plugin_chain, revision 노출
+
+최소 메트릭:
+
+- `gateway_requests_total`
+- `gateway_request_duration_ms`
+- `gateway_plugin_executions_total`
+- `gateway_plugin_failures_total`
+- `gateway_policy_denied_total`
+- `gateway_rate_limit_denied_total`
+- `gateway_reload_total`
+- `gateway_reload_failures_total`
+
+## 권장 디렉토리 구조
+
+```text
+
+├── src
+│   ├── gateway/
+│   │   └── 실제 nginx 바이너리와 conf가 존재
+│   ├── plugins/
+│   │   ├── auth-filter/
+│   │   ├── tenant-filter/
+│   │   ├── header-filter/
+│   │   ├── rate-limit-filter/
+│   │   └── observe-filter/
+│   ├── runtime-config/
+│   │   ├── revisions/
+│   │   └── current -> revisions/<revision>
+│   ├── upstreams/
+│   └── README.md
+├── docs/
+│   ├── configs/
+│   └── etc..
+└── tests/
+    ├── unit/
+    ├── integration/
+    ├── e2e/
+    └── chaos/
+```
+
