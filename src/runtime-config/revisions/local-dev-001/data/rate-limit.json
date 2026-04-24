@@ -1,0 +1,12 @@
+{
+  "default": {
+    "requests": 5,
+    "window_seconds": 60
+  },
+  "limits": {
+    "tenant-a:orders-svc:/api/orders": {
+      "requests": 10,
+      "window_seconds": 60
+    }
+  }
+}

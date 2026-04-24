@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMMAND="${1:-}"
+
+if [[ -z "$COMMAND" ]]; then
+  echo "usage: bin/gateway-dev <bootstrap|doctor|build|up|down|status|activate-sample>"
+  exit 1
+fi
+
+case "$COMMAND" in
+  bootstrap)
+    shift
+    exec "$ROOT_DIR/src/scripts/bootstrap_dev_env.sh" "$@"
+    ;;
+  doctor)
+    shift
+    exec "$ROOT_DIR/src/scripts/doctor.sh" "$@"
+    ;;
+  build)
+    shift
+    exec "$ROOT_DIR/src/scripts/build_rust.sh" "$@"
+    ;;
+  up)
+    shift
+    exec "$ROOT_DIR/src/scripts/dev_up.sh" "$@"
+    ;;
+  down)
+    shift
+    exec "$ROOT_DIR/src/scripts/dev_down.sh" "$@"
+    ;;
+  status)
+    shift
+    exec "$ROOT_DIR/src/scripts/status.sh" "$@"
+    ;;
+  activate-sample)
+    shift
+    exec "$ROOT_DIR/src/scripts/activate_sample_revision.sh" "$@"
+    ;;
+  *)
+    echo "unknown command: $COMMAND"
+    exit 1
+    ;;
+esac

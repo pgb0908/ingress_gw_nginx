@@ -1,0 +1,30 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Router",
+  "metadata": {
+    "name": "orders-route"
+  },
+  "spec": {
+    "targetRef": {
+      "kind": "Listener",
+      "name": "local-http"
+    },
+    "rules": [
+      {
+        "path": "^/api/orders(/.*)?$",
+        "methods": ["GET", "POST"]
+      }
+    ],
+    "config": {
+      "destinations": [
+        {
+          "destinationRef": {
+            "kind": "Service",
+            "name": "orders-svc"
+          },
+          "weight": 100
+        }
+      ]
+    }
+  }
+}
