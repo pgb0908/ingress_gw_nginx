@@ -5,20 +5,9 @@
 이 프로젝트의 목표는 ingress-gateway의 데이터 플레인을 구현하는 것이다.
 control plane은 외부에 존재한다고 가정하며, 데이터 플레인은 배포된 정적 산출물을 받아 요청 처리와 정책 집행을 담당한다.
 
-- 정책 변경을 서비스 배포와 분리한다.
-- route, service, policy 단위 정책을 중앙에서 관리할 수 있어야 한다.
 - gateway를 단일 데모가 아니라 운영 가능한 제품형 시스템으로 만든다.
 - Wasm 플러그인을 버전 단위로 배포하고 롤백할 수 있어야 한다.
 - 장애 시 fallback 규칙과 운영 절차가 코드와 문서에 함께 존재해야 한다.
-- 로그, 메트릭, 트레이싱으로 요청 단위 문제 추적이 가능해야 한다.
-
-## 구현 범위
-
-- 데이터 플레인과 제어 플레인의 명확한 분리
-- 정책 배포, 검증, 롤백 자동화
-- 관측성 기본 완성
-- secret, rate limit, 정책의 외부 시스템 연동
-- 운영자와 서비스 팀이 함께 쓸 수 있는 제품형 구조
 
 ## 산출물
 
@@ -30,31 +19,14 @@ control plane은 외부에 존재한다고 가정하며, 데이터 플레인은 
 
 ## 핵심 원칙
 
-- Nginx는 네트워크와 프록시 코어에 집중한다.
-- Wasm은 공통 정책 집행에 집중한다.
-- 운영 설정은 control plane이 관리한다는 가정으로 개발한다.
-- 요청 경로는 stateless에 가깝게 유지한다.
-- 정책 배포는 서비스 배포와 분리한다.
+- 이 프로젝트는 ngx_wasm_module 사용한다. Nginx + WASM(Rust)
+- 데이터 플레인 영역만 개발한다. 즉, nginx + wsam 영역만 구현한다.
+- config는 두 가지 방법이 존재한다.
+  - static하게 특정 파일 위치의 config 파일을 로딩하여 사용한다.
+  - Admin api를 통해 config를 받아와 nginx에 배포 받은 내용을 적용하여 사용한다.
 - 모든 변경은 검증 가능하고 되돌릴 수 있어야 한다.
 - 정책 결정과 실패 원인은 로그와 메트릭에 남아야 한다.
 
-## 필수 기능
-
-### 데이터 플레인
-
-- Nginx 기반 ingress
-- 다중 Wasm 체인 실행
-- control plane이 생성한 정적 배포 산출물 로드
-- policy 기반 정책 적용
-- 요청 차단, 허용, 헤더 표준화, trace propagation
-- rate limit 조회
-- fallback 정책 수행
-
-최소 요구사항:
-
-- 설정 파일과 Wasm 모듈을 revision 단위 디렉터리로 로드
-- reload 전 `nginx -t` 검증
-- 실패 시 이전 revision 유지
 
 ### 플러그인 런타임 계약
 
@@ -93,7 +65,6 @@ control plane은 외부에 존재한다고 가정하며, 데이터 플레인은 
 
 ```text
 app/
-  gatewayd/
 env/
   dev-env.env
   local/
@@ -102,7 +73,6 @@ fixtures/
   revisions/
 runtime/
   revisions/
-  current -> revisions/<revision>
   dataplane/
   process/
 scripts/

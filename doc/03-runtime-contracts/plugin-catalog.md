@@ -81,6 +81,17 @@
 
 - 기본 `fail-open`
 
+### message-filter
+
+책임:
+
+- 바디의 전문을 파싱
+- config를 통해 메시지 스키마 배포받음
+
+기본 실패 정책:
+
+- 기본 `fail-close`
+
 ## 구현 메모
 
 - `auth-filter`와 `tenant-filter`는 요청 초기에 실행한다.

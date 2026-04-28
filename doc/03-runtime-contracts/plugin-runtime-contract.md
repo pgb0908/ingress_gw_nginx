@@ -74,4 +74,3 @@ plugin은 최소한 다음 lifecycle 훅을 고려해 구현한다.
 
 - [플러그인 카탈로그](plugin-catalog.md)
 - [운영 관측성](../05-operations/observability.md)
-- [리비전 배포와 롤백](../02-architecture/revision-lifecycle.md)
