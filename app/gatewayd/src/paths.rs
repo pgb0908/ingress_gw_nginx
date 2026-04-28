@@ -20,8 +20,6 @@ fn gateway_root() -> PathBuf {
 pub fn local_dir() -> PathBuf            { gateway_root().join("env/local") }
 pub fn run_dir() -> PathBuf              { gateway_root().join("runtime/process") }
 pub fn fixtures_dir() -> PathBuf         { gateway_root().join("fixtures") }
-pub fn revisions_dir() -> PathBuf        { gateway_root().join("runtime/revisions") }
-pub fn current_link() -> PathBuf         { gateway_root().join("runtime/current") }
 pub fn runtime_dir() -> PathBuf          { gateway_root().join("runtime/dataplane") }
 pub fn nginx_runtime_dir() -> PathBuf    { runtime_dir().join("nginx") }
 pub fn nginx_conf_dir() -> PathBuf       { nginx_runtime_dir().join("conf") }

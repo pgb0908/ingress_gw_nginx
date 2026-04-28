@@ -218,7 +218,7 @@ pub struct PolicyEntry {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct RuntimeState {
     pub current_revision: Option<String>,
-    pub previous_revision: Option<String>,
+    pub current_revision_path: Option<String>,
     pub last_validation: Option<ValidationSnapshot>,
     pub last_reload_status: Option<ReloadStatus>,
     #[serde(default)]
@@ -261,7 +261,7 @@ pub struct ValidationResult {
 }
 
 #[derive(Debug, Serialize)]
-pub struct ActivationResult {
+pub struct LoadResult {
     pub revision: Option<String>,
     pub status: String,
     pub message: String,

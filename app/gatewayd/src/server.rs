@@ -6,7 +6,6 @@ use crate::state::{load_state, save_state};
 use anyhow::Result;
 use serde::Deserialize;
 use serde_json::json;
-use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
@@ -28,20 +27,36 @@ pub fn serve_admin(host: &str, port: u16) -> Result<()> {
 fn handle_request(mut request: Request, runtime: &GatewayRuntime) -> Result<()> {
     match (request.method(), request.url()) {
         (&Method::Get, "/status") => {
-        let state = load_state()?;
+            let state = load_state()?;
             respond_json(request, 200, &state)?;
         }
         (&Method::Get, "/metrics") => {
             let state = load_state()?;
             let metrics = state.metrics;
             let body = format!(
-                "gateway_reload_total {}\n\
+                "# HELP gateway_reload_total Total nginx reload attempts\n\
+# TYPE gateway_reload_total counter\n\
+gateway_reload_total {}\n\
+# HELP gateway_reload_failures_total Total nginx reload failures\n\
+# TYPE gateway_reload_failures_total counter\n\
 gateway_reload_failures_total {}\n\
+# HELP gateway_requests_total Total number of requests processed\n\
+# TYPE gateway_requests_total counter\n\
 gateway_requests_total {}\n\
+# HELP gateway_request_duration_ms Request duration in milliseconds\n\
+# TYPE gateway_request_duration_ms counter\n\
 gateway_request_duration_ms {}\n\
+# HELP gateway_plugin_executions_total Total plugin executions\n\
+# TYPE gateway_plugin_executions_total counter\n\
 gateway_plugin_executions_total {}\n\
+# HELP gateway_plugin_failures_total Total plugin failures\n\
+# TYPE gateway_plugin_failures_total counter\n\
 gateway_plugin_failures_total {}\n\
+# HELP gateway_policy_denied_total Total requests denied by policy\n\
+# TYPE gateway_policy_denied_total counter\n\
 gateway_policy_denied_total {}\n\
+# HELP gateway_rate_limit_denied_total Total requests denied by rate limit\n\
+# TYPE gateway_rate_limit_denied_total counter\n\
 gateway_rate_limit_denied_total {}\n",
                 metrics.gateway_reload_total,
                 metrics.gateway_reload_failures_total,
@@ -60,25 +75,16 @@ gateway_rate_limit_denied_total {}\n",
         (&Method::Get, "/plugin-check") | (&Method::Post, "/plugin-check") => {
             handle_plugin_check(request)?;
         }
-        (&Method::Post, "/admin/revisions/validate") => {
-            let body: RevisionBody = read_json_body(&mut request)?;
-            let result = runtime.validate_revision(&body.revision_path)?;
-            let code = if result.valid { 200 } else { 400 };
+        (&Method::Post, "/admin/revisions/load") => {
+            let body: RevisionPathBody = read_json_body(&mut request)?;
+            let result = runtime.load_revision(&body.path)?;
+            let code = if result.status == "loaded" { 200 } else { 400 };
             respond_json(request, code, &result)?;
         }
-        (&Method::Post, "/admin/revisions/activate") => {
-            let body: RevisionBody = read_json_body(&mut request)?;
-            let result = runtime.activate_revision(&body.revision_path)?;
-            let code = if result.status == "activated" { 200 } else { 400 };
-            respond_json(request, code, &result)?;
-        }
-        (&Method::Post, "/admin/revisions/rollback") => {
-            let result = runtime.rollback()?;
-            let code = if result.status == "activated" || result.status == "rolled_back" {
-                200
-            } else {
-                400
-            };
+        (&Method::Post, "/admin/config") => {
+            let body: RevisionPathBody = read_json_body(&mut request)?;
+            let result = runtime.load_revision(&body.path)?;
+            let code = if result.status == "loaded" { 200 } else { 400 };
             respond_json(request, code, &result)?;
         }
         _ => {
@@ -90,8 +96,8 @@ gateway_rate_limit_denied_total {}\n",
 
 fn handle_plugin_check(request: Request) -> Result<()> {
     let started = Instant::now();
-    let current = resolve_current_revision()?;
-    let bundle = load_revision_bundle(&current)?;
+    let bundle_path = resolve_current_revision_path()?;
+    let bundle = load_revision_bundle(&bundle_path)?;
     let headers = request.headers();
 
     let request_id = header_value(headers, "X-Request-Id").unwrap_or_else(|| Uuid::new_v4().to_string());
@@ -113,7 +119,8 @@ fn handle_plugin_check(request: Request) -> Result<()> {
         .policies
         .iter()
         .filter(|policy| {
-            policy.document.spec.target_ref.name == service_id || policy.document.spec.target_ref.name.starts_with("orders-route")
+            policy.document.spec.target_ref.name == service_id
+                || policy.document.spec.target_ref.name.starts_with("orders-route")
         })
         .map(|policy| {
             policy
@@ -163,7 +170,7 @@ fn handle_plugin_check(request: Request) -> Result<()> {
         if expected_api_key != api_key {
             state.metrics.gateway_policy_denied_total += 1;
             save_state(&state)?;
-        return respond_error(
+            return respond_error(
                 request,
                 401,
                 "unauthorized",
@@ -190,10 +197,7 @@ fn handle_plugin_check(request: Request) -> Result<()> {
         save_state(&state)?;
         let mut response_headers = base_headers.clone();
         response_headers.push(("X-Gateway-Decision".to_string(), "deny".to_string()));
-        response_headers.push((
-            "X-Gateway-Decision-Reason".to_string(),
-            "rate_limited".to_string(),
-        ));
+        response_headers.push(("X-Gateway-Decision-Reason".to_string(), "rate_limited".to_string()));
         return respond_json_with_headers(
             request,
             429,
@@ -215,16 +219,10 @@ fn handle_plugin_check(request: Request) -> Result<()> {
 
     let mut response_headers = base_headers;
     response_headers.push(("X-Gateway-Decision".to_string(), "allow".to_string()));
-    response_headers.push((
-        "X-Gateway-Decision-Reason".to_string(),
-        "policy_passed".to_string(),
-    ));
+    response_headers.push(("X-Gateway-Decision-Reason".to_string(), "policy_passed".to_string()));
     response_headers.push(("X-Auth-Subject".to_string(), tenant_id.clone()));
     response_headers.push(("X-Auth-Method".to_string(), "x-api-key".to_string()));
-    response_headers.push((
-        "X-Gateway-Limit-Remaining".to_string(),
-        decision.remaining.to_string(),
-    ));
+    response_headers.push(("X-Gateway-Limit-Remaining".to_string(), decision.remaining.to_string()));
     respond_json_with_headers(request, 200, &json!({ "status": "ok" }), &response_headers)
 }
 
@@ -257,12 +255,12 @@ fn respond_error(
     )
 }
 
-fn resolve_current_revision() -> Result<PathBuf> {
-    let link = paths::current_link();
-    if link.exists() || link.is_symlink() {
-        return fs::canonicalize(&link).map_err(Into::into);
+fn resolve_current_revision_path() -> Result<PathBuf> {
+    let state = load_state()?;
+    match state.current_revision_path {
+        Some(path) => Ok(PathBuf::from(path)),
+        None => anyhow::bail!("no revision loaded; call POST /admin/revisions/load first"),
     }
-    anyhow::bail!("current revision is not active");
 }
 
 fn service_for_route(bundle: &crate::models::RevisionBundle, route_id: &str) -> Option<String> {
@@ -281,7 +279,7 @@ fn epoch_seconds() -> u64 {
         .as_secs()
 }
 
-fn header_value(headers: &[Header], name: &str) -> Option<String> {
+fn header_value(headers: &[tiny_http::Header], name: &str) -> Option<String> {
     headers
         .iter()
         .find(|header| format!("{}", header.field).eq_ignore_ascii_case(name))
@@ -295,8 +293,7 @@ fn read_json_body<T: for<'de> Deserialize<'de>>(request: &mut Request) -> Result
 }
 
 fn respond_json(request: Request, status: u16, payload: &impl serde::Serialize) -> Result<()> {
-    let headers: Vec<(String, String)> = Vec::new();
-    respond_json_with_headers(request, status, payload, &headers)
+    respond_json_with_headers(request, status, payload, &[])
 }
 
 fn respond_json_with_headers(
@@ -323,6 +320,6 @@ fn content_type(value: &str) -> Header {
 }
 
 #[derive(Debug, Deserialize)]
-struct RevisionBody {
-    revision_path: PathBuf,
+struct RevisionPathBody {
+    path: PathBuf,
 }

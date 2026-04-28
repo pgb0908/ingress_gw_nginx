@@ -1,3 +1,16 @@
 [workspace]
-members = ["app/gatewayd"]
+members = [
+    "app/gatewayd",
+    "app/tenant-filter",
+    "app/auth-filter",
+    "app/header-filter",
+    "app/rate-limit-filter",
+    "app/observe-filter",
+]
 resolver = "2"
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = true
+strip = true
