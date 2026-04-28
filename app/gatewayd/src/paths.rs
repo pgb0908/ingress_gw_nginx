@@ -17,16 +17,13 @@ fn gateway_root() -> PathBuf {
         .expect("cannot resolve gateway root; set GATEWAY_ROOT")
 }
 
-pub fn local_dir() -> PathBuf            { gateway_root().join("env/local") }
 pub fn run_dir() -> PathBuf              { gateway_root().join("runtime/process") }
-pub fn fixtures_dir() -> PathBuf         { gateway_root().join("fixtures") }
 pub fn runtime_dir() -> PathBuf          { gateway_root().join("runtime/dataplane") }
 pub fn nginx_runtime_dir() -> PathBuf    { runtime_dir().join("nginx") }
 pub fn nginx_conf_dir() -> PathBuf       { nginx_runtime_dir().join("conf") }
 pub fn generated_dir() -> PathBuf        { nginx_runtime_dir().join("generated") }
 pub fn log_dir() -> PathBuf              { runtime_dir().join("logs") }
 pub fn state_file() -> PathBuf           { runtime_dir().join("state.json") }
-pub fn rate_limit_state_file() -> PathBuf { runtime_dir().join("rate-limit-state.json") }
 
 pub fn project_nginx_bin() -> PathBuf {
     if let Ok(val) = env::var("GATEWAY_NGINX_BIN") {
