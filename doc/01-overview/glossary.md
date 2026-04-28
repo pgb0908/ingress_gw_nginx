@@ -8,6 +8,9 @@
 - `gateway policy deploy`: 서비스 재배포 없이 gateway 설정과 플러그인 조합만 변경하는 릴리스
 - `plugin chain`: 요청 처리 중 순서대로 실행되는 Wasm 플러그인 목록
 - `fallback`: 외부 연동 실패 또는 정책 실패 시 적용하는 명시적 대체 동작
+- `fail-open`: plugin 또는 외부 의존성 오류가 있어도 요청을 계속 진행하는 실패 정책. 관측성 보강, 헤더 정규화 등 비필수 plugin에 적용
+- `fail-close`: 오류가 발생하면 표준 에러 응답으로 즉시 요청을 차단하는 실패 정책. 인증, tenant 식별 등 보안 critical plugin에 적용
+- `fail-static-response`: 오류 시 미리 정의된 고정 응답을 반환하고 upstream 호출을 수행하지 않는 실패 정책
 
 ## 문서 내 표기 규칙
 
