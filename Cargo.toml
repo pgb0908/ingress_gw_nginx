@@ -1,4 +1,3 @@
 [workspace]
-members = ["src/gatewayd"]
+members = ["app/gatewayd"]
 resolver = "2"
-

@@ -19,8 +19,7 @@ stop_pid_file "$(admin_pid_file)"
 stop_pid_file "$(upstream_pid_file)"
 
 if [[ -f "$(nginx_pid_file)" ]]; then
-  "$PROJECT_NGINX_BIN" -p "$ROOT_DIR/src/gateway/runtime/nginx" -c "$ROOT_DIR/src/gateway/runtime/nginx/conf/nginx.conf" -s quit || true
+  "$PROJECT_NGINX_BIN" -p "$RUNTIME_DIR/nginx" -c "$RUNTIME_DIR/nginx/conf/nginx.conf" -s quit || true
 fi
 
 echo "gateway-dev down complete"
-

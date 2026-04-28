@@ -10,27 +10,27 @@ pub fn repo_root() -> PathBuf {
 }
 
 pub fn local_dir() -> PathBuf {
-    repo_root().join(".local")
+    repo_root().join("env/local")
 }
 
 pub fn run_dir() -> PathBuf {
-    repo_root().join(".run")
+    repo_root().join("runtime/process")
 }
 
-pub fn runtime_config_dir() -> PathBuf {
-    repo_root().join("src/runtime-config")
+pub fn fixtures_dir() -> PathBuf {
+    repo_root().join("fixtures")
 }
 
 pub fn revisions_dir() -> PathBuf {
-    runtime_config_dir().join("revisions")
+    repo_root().join("runtime/revisions")
 }
 
 pub fn current_link() -> PathBuf {
-    runtime_config_dir().join("current")
+    repo_root().join("runtime/current")
 }
 
 pub fn runtime_dir() -> PathBuf {
-    repo_root().join("src/gateway/runtime")
+    repo_root().join("runtime/dataplane")
 }
 
 pub fn nginx_runtime_dir() -> PathBuf {
@@ -77,4 +77,3 @@ pub fn ensure_runtime_layout() -> Result<()> {
     }
     Ok(())
 }
-

@@ -12,7 +12,7 @@ if [[ ! -x "$PROJECT_NGINX_BIN" ]]; then
 fi
 
 if [[ ! -x "$(gateway_bin)" ]] || [[ ! -x "$(upstream_bin)" ]]; then
-  "$ROOT_DIR/src/scripts/build_rust.sh"
+  "$ROOT_DIR/scripts/dev/build_rust.sh"
 fi
 
 if [[ ! -f "$(admin_pid_file)" ]] || ! kill -0 "$(cat "$(admin_pid_file)")" 2>/dev/null; then
@@ -27,5 +27,6 @@ if [[ ! -f "$(upstream_pid_file)" ]] || ! kill -0 "$(cat "$(upstream_pid_file)")
   printf '%s\n' "$upstream_pid" >"$(upstream_pid_file)"
 fi
 
-"$(gateway_bin)" activate-revision --revision-path "$ROOT_DIR/src/runtime-config/revisions/local-dev-001"
+stage_sample_revision
+"$(gateway_bin)" activate-revision --revision-path "$(sample_runtime_revision_dir)"
 echo "gateway-dev up complete"

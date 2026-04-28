@@ -10,6 +10,8 @@ printf 'cargo=%s\n' "$(command -v cargo || true)"
 printf 'project_nginx=%s\n' "$PROJECT_NGINX_BIN"
 printf 'gateway_bin=%s\n' "$(gateway_bin)"
 printf 'upstream_bin=%s\n' "$(upstream_bin)"
+printf 'fixture_revision=%s\n' "$(sample_fixture_revision_dir)"
+printf 'runtime_revision=%s\n' "$(sample_runtime_revision_dir)"
 
 if [[ -x "$PROJECT_NGINX_BIN" ]]; then
   "$PROJECT_NGINX_BIN" -v || true
@@ -28,5 +30,3 @@ if command -v rustup >/dev/null 2>&1; then
 else
   echo "rustup missing"
 fi
-
-python3 --version

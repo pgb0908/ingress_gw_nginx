@@ -1,16 +1,20 @@
-# Local toolchains and runtime artifacts
-.local/
-.run/
-target/
-src/runtime-config/current
+# Local toolchains and caches
+env/local/
+env/cache/
 
-# Runtime output
-src/gateway/runtime/
+# Build output
+target/
+runtime/current
+runtime/revisions/
+
+# Process and runtime output
+runtime/process/
+runtime/dataplane/
+
 *.log
 *.pid
 
 # Python cache
-src/**/__pycache__/
 *.pyc
 
 # IDE and local assistant metadata

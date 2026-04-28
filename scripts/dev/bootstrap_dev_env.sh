@@ -9,7 +9,7 @@ install_rust() {
     return
   fi
 
-  local installer="$RUN_DIR/rustup-init.sh"
+  local installer="$CACHE_DIR/rustup-init.sh"
   curl -L https://sh.rustup.rs -o "$installer"
   chmod +x "$installer"
   CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" sh "$installer" -y --default-toolchain "$RUST_TOOLCHAIN" --profile minimal
@@ -28,8 +28,8 @@ install_wasmx() {
     return
   fi
 
-  local archive="$RUN_DIR/$WASMX_ARCHIVE"
-  local unpack_dir="$RUN_DIR/wasmx-unpack"
+  local archive="$CACHE_DIR/$WASMX_ARCHIVE"
+  local unpack_dir="$CACHE_DIR/wasmx-unpack"
   rm -rf "$unpack_dir"
   mkdir -p "$unpack_dir"
   curl -L "$WASMX_DOWNLOAD_URL" -o "$archive"
@@ -46,4 +46,3 @@ install_rust
 install_targets
 install_wasmx
 echo "bootstrap complete"
-

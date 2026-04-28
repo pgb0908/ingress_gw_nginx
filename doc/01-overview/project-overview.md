@@ -24,9 +24,9 @@ control plane은 외부에 존재한다고 가정하며, 데이터 플레인은 
 
 - 데이터 플레인 예제 구현
 - `doc/` 운영 절차, 장애 대응, 호환성 규칙 문서
-- `src/` ingress-gateway 소스 코드
+- `app/` ingress-gateway 소스 코드
 - `tests/` 단위, 통합, 회귀, 장애, 롤백 테스트
-- `src/scripts/` 배포, 검증, 롤백 자동화 스크립트
+- `scripts/dev/` 배포, 검증, 롤백 자동화 스크립트
 
 ## 핵심 원칙
 
@@ -92,13 +92,21 @@ control plane은 외부에 존재한다고 가정하며, 데이터 플레인은 
 ## 권장 저장소 구조
 
 ```text
-src/
-  gateway/
-  plugins/
-  runtime-config/
-    revisions/
-    current -> revisions/<revision>
-  upstreams/
+app/
+  gatewayd/
+env/
+  dev-env.env
+  local/
+  cache/
+fixtures/
+  revisions/
+runtime/
+  revisions/
+  current -> revisions/<revision>
+  dataplane/
+  process/
+scripts/
+  dev/
 tests/
   unit/
   integration/

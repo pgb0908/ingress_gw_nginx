@@ -12,31 +12,31 @@ fi
 case "$COMMAND" in
   bootstrap)
     shift
-    exec "$ROOT_DIR/src/scripts/bootstrap_dev_env.sh" "$@"
+    exec "$ROOT_DIR/scripts/dev/bootstrap_dev_env.sh" "$@"
     ;;
   doctor)
     shift
-    exec "$ROOT_DIR/src/scripts/doctor.sh" "$@"
+    exec "$ROOT_DIR/scripts/dev/doctor.sh" "$@"
     ;;
   build)
     shift
-    exec "$ROOT_DIR/src/scripts/build_rust.sh" "$@"
+    exec "$ROOT_DIR/scripts/dev/build_rust.sh" "$@"
     ;;
   up)
     shift
-    exec "$ROOT_DIR/src/scripts/dev_up.sh" "$@"
+    exec "$ROOT_DIR/scripts/dev/dev_up.sh" "$@"
     ;;
   down)
     shift
-    exec "$ROOT_DIR/src/scripts/dev_down.sh" "$@"
+    exec "$ROOT_DIR/scripts/dev/dev_down.sh" "$@"
     ;;
   status)
     shift
-    exec "$ROOT_DIR/src/scripts/status.sh" "$@"
+    exec "$ROOT_DIR/scripts/dev/status.sh" "$@"
     ;;
   activate-sample)
     shift
-    exec "$ROOT_DIR/src/scripts/activate_sample_revision.sh" "$@"
+    exec "$ROOT_DIR/scripts/dev/activate_sample_revision.sh" "$@"
     ;;
   *)
     echo "unknown command: $COMMAND"

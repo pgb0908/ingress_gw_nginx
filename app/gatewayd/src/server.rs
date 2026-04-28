@@ -28,7 +28,7 @@ pub fn serve_admin(host: &str, port: u16) -> Result<()> {
 fn handle_request(mut request: Request, runtime: &GatewayRuntime) -> Result<()> {
     match (request.method(), request.url()) {
         (&Method::Get, "/status") => {
-            let state = load_state()?;
+        let state = load_state()?;
             respond_json(request, 200, &state)?;
         }
         (&Method::Get, "/metrics") => {
