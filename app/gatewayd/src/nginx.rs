@@ -76,6 +76,7 @@ impl NginxManager {
     }
 
     fn build_conf(&self, bundle: &RevisionBundle) -> String {
+        let mime_types_path = paths::nginx_conf_dir().join("mime.types");
         let access_log_path = paths::log_dir().join("access.log");
         let error_log_path = paths::log_dir().join("error.log");
         let bootstrap_error_log = paths::log_dir().join("bootstrap-error.log");
@@ -167,7 +168,7 @@ events {{
 }}
 
 http {{
-    include       /etc/nginx/mime.types;
+    include       {mime_types_path};
     default_type  application/octet-stream;
     client_body_temp_path client_body_temp;
     proxy_temp_path proxy_temp;
@@ -211,6 +212,7 @@ http {{
     }}
 }}
 "#,
+            mime_types_path = mime_types_path.display(),
             bootstrap_error_log = bootstrap_error_log.display(),
             access_log_path = access_log_path.display(),
             error_log_path = error_log_path.display(),

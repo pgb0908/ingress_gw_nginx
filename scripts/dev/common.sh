@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export ROOT_DIR
+export GATEWAY_ROOT="$ROOT_DIR"
 source "$ROOT_DIR/env/dev-env.env"
 
 export LOCAL_DIR="$ROOT_DIR/env/local"

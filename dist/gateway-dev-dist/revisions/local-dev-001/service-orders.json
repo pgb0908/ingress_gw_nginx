@@ -1,0 +1,20 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Service",
+  "metadata": {
+    "name": "orders-svc"
+  },
+  "spec": {
+    "protocol": "HTTP",
+    "loadBalancing": {
+      "algorithm": "ROUND_ROBIN",
+      "targets": [
+        {
+          "host": "127.0.0.1",
+          "port": 18080,
+          "weight": 100
+        }
+      ]
+    }
+  }
+}

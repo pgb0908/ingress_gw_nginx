@@ -16,7 +16,7 @@ if [[ ! -x "$(gateway_bin)" ]] || [[ ! -x "$(upstream_bin)" ]]; then
 fi
 
 if [[ ! -f "$(admin_pid_file)" ]] || ! kill -0 "$(cat "$(admin_pid_file)")" 2>/dev/null; then
-  nohup "$(gateway_bin)" serve-admin --host 127.0.0.1 --port 19080 >"$RUN_DIR/admin.log" 2>&1 &
+  nohup "$(gateway_bin)" serve-admin --host 0.0.0.0 --port 19080 >"$RUN_DIR/admin.log" 2>&1 &
   admin_pid="$!"
   printf '%s\n' "$admin_pid" >"$(admin_pid_file)"
 fi
