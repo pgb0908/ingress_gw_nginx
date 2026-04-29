@@ -268,6 +268,16 @@ pub struct LoadResult {
     pub validation: Option<ValidationResult>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct DeployResult {
+    pub kind: String,
+    pub name: String,
+    /// "applied" | "staged" | "failed"
+    pub status: String,
+    pub message: String,
+    pub validation: Option<ValidationResult>,
+}
+
 pub fn default_true() -> bool {
     true
 }

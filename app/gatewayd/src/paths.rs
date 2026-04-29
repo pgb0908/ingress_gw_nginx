@@ -19,6 +19,7 @@ fn gateway_root() -> PathBuf {
 
 pub fn run_dir() -> PathBuf              { gateway_root().join("runtime/process") }
 pub fn runtime_dir() -> PathBuf          { gateway_root().join("runtime/dataplane") }
+pub fn live_dir() -> PathBuf             { runtime_dir().join("live") }
 pub fn nginx_runtime_dir() -> PathBuf    { runtime_dir().join("nginx") }
 pub fn nginx_conf_dir() -> PathBuf       { nginx_runtime_dir().join("conf") }
 pub fn generated_dir() -> PathBuf        { nginx_runtime_dir().join("generated") }

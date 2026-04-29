@@ -22,17 +22,20 @@ Admin API
   5. Nginx 설정 반영
 ```
 
-### 방식 B: API push
+### 방식 B: 리소스 단위 push
 
-control plane이 Admin API 엔드포인트로 config payload를 직접 전송한다.
+control plane이 `POST /deploy`로 리소스를 하나씩 전달한다.  
+각 요청은 `kind`와 `metadata.name`으로 리소스를 식별하며, 번들이 완전해지면 자동으로 nginx reload가 실행된다.
 
 ```
 Control Plane
-  1. Admin API에 config payload 전송
+  1. 리소스(Gateway, Listener, Router, Service, ...) JSON을 POST /deploy로 전송
+  2. 응답 status 확인 (staged → 계속 전달, applied → 완료)
 
 Admin API
-  2. 수신한 config 검증
-  3. Nginx 설정 반영
+  3. 수신한 리소스를 live 디렉토리에 저장
+  4. 번들 완전성 검증
+  5. 번들 완전 시 Nginx 설정 반영
 ```
 
 ## 배포 절차
@@ -47,11 +50,12 @@ curl -X POST http://127.0.0.1:19080/admin/revisions/load \
   -d '{"path": "/path/to/revision-bundle"}'
 ```
 
-**방식 B (API push):**
+**방식 B (리소스 단위 push):**
 ```bash
-curl -X POST http://127.0.0.1:19080/admin/config \
+# 리소스를 순서 없이 하나씩 전달; 마지막 리소스가 번들을 완성시키면 200 applied 반환
+curl -X POST http://127.0.0.1:19080/deploy \
   -H "Content-Type: application/json" \
-  -d @revision-bundle.json
+  -d '{"kind":"Listener","metadata":{"name":"main"},"spec":{"protocol":"HTTP","port":8080,"host":"0.0.0.0"}}'
 ```
 
 ### 2단계: 적용 확인
@@ -110,12 +114,16 @@ Admin API
 
 | 엔드포인트 | 설명 |
 |-----------|------|
-| `GET /status` | 현재 runtime state 조회 |
+| `GET /status` | 현재 runtime state + config 스냅샷 조회 |
 | `GET /metrics` | Prometheus 형식 메트릭 조회 |
-| `GET /plugin-check` | plugin 호환성 검사 |
-| `GET /admin/revisions/*` | revision 목록 및 상세 조회 |
+| `POST /deploy` | 개별 리소스 JSON을 push해 config 업데이트 |
+| `POST /admin/revisions/load` | revision 번들 경로를 지정해 config 적용 |
+| `POST /admin/config` | `/admin/revisions/load` 별칭 |
+
+전체 요청/응답 스키마는 [Admin API 레퍼런스](admin-api.md)를 참조한다.
 
 ## 관련 문서
 
+- [Admin API 레퍼런스](admin-api.md)
 - [리비전 구조](../02-architecture/revision-lifecycle.md)
 - [운영 관측성](observability.md)

@@ -1,6 +1,6 @@
 use crate::models::PluginManifest;
 use crate::revision::load_revision_bundle;
-use crate::runtime::GatewayRuntime;
+use crate::runtime::{DeployError, GatewayRuntime};
 use crate::state::load_state;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -73,6 +73,26 @@ gateway_rate_limit_denied_total {}\n",
                 .with_status_code(200)
                 .with_header(content_type("text/plain; version=0.0.4"));
             request.respond(response)?;
+        }
+        (&Method::Post, "/deploy") => {
+            let mut body_bytes = Vec::new();
+            request.as_reader().read_to_end(&mut body_bytes)?;
+            match runtime.deploy_resource(&body_bytes) {
+                Ok(result) => {
+                    let code = match result.status.as_str() {
+                        "applied" => 200,
+                        "staged"  => 202,
+                        _         => 500,
+                    };
+                    respond_json(request, code, &result)?;
+                }
+                Err(DeployError::BadRequest(msg)) => {
+                    respond_json(request, 400, &json!({ "error": msg }))?;
+                }
+                Err(DeployError::Internal(err)) => {
+                    respond_json(request, 500, &json!({ "error": err.to_string() }))?;
+                }
+            }
         }
         (&Method::Post, "/admin/revisions/load") => {
             let body: RevisionPathBody = read_json_body(&mut request)?;
