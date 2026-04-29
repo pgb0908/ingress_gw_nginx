@@ -86,7 +86,7 @@ impl GatewayRuntime {
     }
 }
 
-fn validate_bundle(revision_path: &Path, nginx: &NginxManager) -> Result<ValidationResult> {
+pub fn validate_bundle(revision_path: &Path, nginx: &NginxManager) -> Result<ValidationResult> {
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 

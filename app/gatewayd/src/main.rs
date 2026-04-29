@@ -1,13 +1,6 @@
-mod models;
-mod nginx;
-mod paths;
-mod revision;
-mod runtime;
-mod server;
-mod state;
-
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use gatewayd::{server, state};
 
 #[derive(Parser)]
 #[command(name = "gatewayd")]

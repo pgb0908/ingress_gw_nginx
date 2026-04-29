@@ -86,7 +86,7 @@ impl NginxManager {
         })
     }
 
-    fn build_conf(&self, bundle: &RevisionBundle) -> Result<String> {
+    pub fn build_conf(&self, bundle: &RevisionBundle) -> Result<String> {
         let mime_types_path = paths::nginx_conf_dir().join("mime.types");
         let access_log_path = paths::log_dir().join("access.log");
         let error_log_path = paths::log_dir().join("error.log");

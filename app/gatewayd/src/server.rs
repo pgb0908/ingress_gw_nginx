@@ -1,9 +1,12 @@
+use crate::models::PluginManifest;
+use crate::revision::load_revision_bundle;
 use crate::runtime::GatewayRuntime;
 use crate::state::load_state;
 use anyhow::Result;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 
 pub fn serve_admin(host: &str, port: u16) -> Result<()> {
@@ -23,7 +26,11 @@ fn handle_request(mut request: Request, runtime: &GatewayRuntime) -> Result<()> 
     match (request.method(), request.url()) {
         (&Method::Get, "/status") => {
             let state = load_state()?;
-            respond_json(request, 200, &state)?;
+            let config = state
+                .current_revision_path
+                .as_deref()
+                .and_then(|p| build_config_snapshot(Path::new(p)).ok());
+            respond_json(request, 200, &StatusResponse { state, config })?;
         }
         (&Method::Get, "/metrics") => {
             let state = load_state()?;
@@ -108,4 +115,125 @@ fn content_type(value: &str) -> Header {
 #[derive(Debug, Deserialize)]
 struct RevisionPathBody {
     path: PathBuf,
+}
+
+// ── /status response ──────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+struct StatusResponse {
+    #[serde(flatten)]
+    state: crate::models::RuntimeState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    config: Option<ConfigSnapshot>,
+}
+
+#[derive(Debug, Serialize)]
+struct ConfigSnapshot {
+    revision: String,
+    created_at: String,
+    runtime_compat: String,
+    plugin_chain: Vec<String>,
+    listener: ListenerSnapshot,
+    routers: Vec<RouterSnapshot>,
+    services: HashMap<String, ServiceSnapshot>,
+    plugins: Vec<PluginManifest>,
+}
+
+#[derive(Debug, Serialize)]
+struct ListenerSnapshot {
+    protocol: String,
+    host: String,
+    port: u16,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    allowed_hostnames: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct RouterSnapshot {
+    name: String,
+    rules: Vec<RuleSnapshot>,
+    destination: String,
+}
+
+#[derive(Debug, Serialize)]
+struct RuleSnapshot {
+    path: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    methods: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct ServiceSnapshot {
+    targets: Vec<TargetSnapshot>,
+}
+
+#[derive(Debug, Serialize)]
+struct TargetSnapshot {
+    host: String,
+    port: u16,
+    weight: u16,
+}
+
+fn build_config_snapshot(revision_path: &Path) -> Result<ConfigSnapshot> {
+    let bundle = load_revision_bundle(revision_path)?;
+
+    let listener = ListenerSnapshot {
+        protocol: bundle.listener.spec.protocol.clone(),
+        host: bundle.listener.spec.host.clone(),
+        port: bundle.listener.spec.port,
+        allowed_hostnames: bundle.listener.spec.allowed_hostnames.clone(),
+    };
+
+    let routers = bundle
+        .routers
+        .iter()
+        .map(|r| {
+            let destination = r
+                .spec
+                .config
+                .destinations
+                .first()
+                .map(|d| d.destination_ref.name.clone())
+                .unwrap_or_default();
+            RouterSnapshot {
+                name: r.metadata.name.clone(),
+                rules: r
+                    .spec
+                    .rules
+                    .iter()
+                    .map(|rule| RuleSnapshot {
+                        path: rule.path.clone(),
+                        methods: rule.methods.clone(),
+                    })
+                    .collect(),
+                destination,
+            }
+        })
+        .collect();
+
+    let services = bundle
+        .services
+        .iter()
+        .map(|(name, svc)| {
+            let targets = svc
+                .spec
+                .load_balancing
+                .targets
+                .iter()
+                .map(|t| TargetSnapshot { host: t.host.clone(), port: t.port, weight: t.weight })
+                .collect();
+            (name.clone(), ServiceSnapshot { targets })
+        })
+        .collect();
+
+    Ok(ConfigSnapshot {
+        revision: bundle.manifest.revision,
+        created_at: bundle.manifest.created_at,
+        runtime_compat: bundle.manifest.runtime_compat,
+        plugin_chain: bundle.plugin_chain,
+        listener,
+        routers,
+        services,
+        plugins: bundle.manifest.plugins,
+    })
 }

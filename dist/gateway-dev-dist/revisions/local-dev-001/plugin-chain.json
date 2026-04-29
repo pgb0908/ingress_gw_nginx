@@ -1,9 +1,0 @@
-{
-  "plugins": [
-    "tenant-filter",
-    "auth-filter",
-    "header-filter",
-    "rate-limit-filter",
-    "observe-filter"
-  ]
-}

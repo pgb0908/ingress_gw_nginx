@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMMAND="${1:-}"
 
 if [[ -z "$COMMAND" ]]; then
-  echo "usage: bin/gateway-dev <bootstrap|doctor|build|up|down|status|activate-sample>"
+  echo "usage: bin/gateway-dev <bootstrap|doctor|build|test|up|down|status|activate-sample>"
   exit 1
 fi
 
@@ -33,6 +33,10 @@ case "$COMMAND" in
   status)
     shift
     exec "$ROOT_DIR/scripts/dev/status.sh" "$@"
+    ;;
+  test)
+    shift
+    exec "$ROOT_DIR/scripts/dev/run_tests.sh" "$@"
     ;;
   activate-sample)
     shift

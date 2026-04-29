@@ -70,3 +70,10 @@ stage_sample_revision() {
   mkdir -p "$target_dir"
   cp -R "$source_dir"/. "$target_dir"/
 }
+
+load_revision() {
+  local revision_path="$1"
+  curl -sf -X POST http://127.0.0.1:19080/admin/revisions/load \
+    -H 'Content-Type: application/json' \
+    -d "{\"path\": \"${revision_path}\"}"
+}

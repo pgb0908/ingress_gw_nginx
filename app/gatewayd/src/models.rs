@@ -13,7 +13,7 @@ pub struct Metadata {
     pub name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct GatewaySpec {
     #[serde(default)]
     pub logging: GatewayLogging,
