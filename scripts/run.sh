@@ -9,9 +9,7 @@ export GATEWAY_NGINX_BIN="$GATEWAY_ROOT/bin/nginx"
 
 RUN_DIR="$GATEWAY_ROOT/runtime/process"
 REVISIONS_DIR="$GATEWAY_ROOT/runtime/revisions"
-SAMPLE_REVISION_NAME="local-dev-001"
-SAMPLE_SRC="$GATEWAY_ROOT/revisions/$SAMPLE_REVISION_NAME"
-SAMPLE_DEST="$REVISIONS_DIR/$SAMPLE_REVISION_NAME"
+REVISION_PATH="${1:-}"
 
 if [[ ! -x "$GATEWAYD" ]]; then
   echo "error: $GATEWAYD not found or not executable" >&2; exit 1
@@ -31,11 +29,6 @@ if [[ -f "$RUN_DIR/admin.pid" ]]; then
   rm -f "$RUN_DIR/admin.pid"
 fi
 
-if [[ ! -d "$SAMPLE_DEST" ]]; then
-  echo "staging sample revision $SAMPLE_REVISION_NAME ..."
-  cp -R "$SAMPLE_SRC" "$SAMPLE_DEST"
-fi
-
 echo "starting gatewayd (GATEWAY_ROOT=$GATEWAY_ROOT) ..."
 nohup "$GATEWAYD" serve-admin --host 0.0.0.0 --port 19080 \
   >"$RUN_DIR/admin.log" 2>&1 &
@@ -44,7 +37,17 @@ echo "admin pid=$(cat "$RUN_DIR/admin.pid"), log=$RUN_DIR/admin.log"
 
 sleep 1
 
-echo "activating revision $SAMPLE_REVISION_NAME ..."
-"$GATEWAYD" activate-revision --revision-path "$SAMPLE_DEST"
+if [[ -n "$REVISION_PATH" ]]; then
+  echo "activating revision $REVISION_PATH ..."
+  "$GATEWAYD" activate-revision --revision-path "$REVISION_PATH"
+else
+  cat <<EOF
+admin server started.
+place a revision bundle under:
+  $REVISIONS_DIR/<revision-name>
+then activate it with:
+  $GATEWAYD activate-revision --revision-path $REVISIONS_DIR/<revision-name>
+EOF
+fi
 
-echo "done. stop: kill \$(cat $RUN_DIR/admin.pid)"
+echo "done. stop: $GATEWAY_ROOT/stop.sh"

@@ -78,12 +78,15 @@ curl http://<서버IP>:19080/metrics
 bin/gateway-dev down
 ```
 
-## 패키지 빌드 (독립 실행 tarball)
+## 패키지 빌드 (운영형 tarball)
 
 ```bash
 bash scripts/package.sh
 # → dist/gateway-dev-dist.tar.gz
 ```
+
+생성물은 `gatewayd`, `nginx`, 실행 스크립트만 포함하는 self-contained tarball이다.
+샘플 revision은 포함하지 않으므로, 실제 revision 번들은 별도로 준비해야 한다.
 
 다른 머신이나 경로에서 바로 실행할 수 있다.
 
@@ -93,7 +96,18 @@ cd gateway-dev-dist
 ./run.sh
 ```
 
-`run.sh`는 revision 초기화 → admin 서버 기동 → nginx 활성화까지 자동으로 처리한다. 기동 후 확인은 위 **admin API 응답 확인** 과 동일하다.
+`run.sh`는 admin 서버만 기동한다.
+이후 revision 번들을 `revisions/<revision-name>` 아래에 배치하고 명시적으로 활성화한다.
+
+```bash
+bin/gatewayd activate-revision --revision-path ./revisions/<revision-name>
+```
+
+버전 정보 확인:
+
+```bash
+bin/gatewayd version
+```
 
 종료:
 
