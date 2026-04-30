@@ -36,6 +36,9 @@ plugin은 최소한 다음 lifecycle 훅을 고려해 구현한다.
 
 모든 plugin이 모든 훅을 구현할 필요는 없지만, 어떤 훅에서 결정이 내려졌는지 로그에서 식별 가능해야 한다.
 
+문서상 lifecycle 이름과 실제 Rust 구현의 `proxy-wasm` `trait` 메서드 이름은 다를 수 있다.
+현재 저장소의 실제 매핑과 구현 현황은 [Proxy-Wasm Hook Mapping](proxy-wasm-hook-mapping.md) 문서를 기준으로 본다.
+
 ## 응답 에러 형식
 
 모든 차단 응답은 아래 형식을 따른다.
@@ -72,5 +75,6 @@ plugin은 최소한 다음 lifecycle 훅을 고려해 구현한다.
 
 ## 관련 문서
 
+- [Proxy-Wasm Hook Mapping](proxy-wasm-hook-mapping.md)
 - [플러그인 카탈로그](plugin-catalog.md)
 - [운영 관측성](../05-operations/observability.md)

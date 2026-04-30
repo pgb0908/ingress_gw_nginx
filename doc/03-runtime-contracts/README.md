@@ -8,12 +8,14 @@ plugin 구현 또는 Nginx 연동 구현을 시작하기 전에 이 문서들을
 | 문서 | 내용 |
 |------|------|
 | [plugin-runtime-contract.md](plugin-runtime-contract.md) | 공통 헤더 규칙, lifecycle 훅 정의, 에러 응답 형식, 실패 정책, 버전 호환성 요건 |
+| [proxy-wasm-hook-mapping.md](proxy-wasm-hook-mapping.md) | 문서상 훅 분류, revision 메타데이터, 실제 `proxy-wasm` trait 메서드 구현의 매핑 |
 | [plugin-catalog.md](plugin-catalog.md) | 기본 데이터 플레인에서 제공해야 할 plugin 목록 (책임, 입출력, failure mode) |
 
 ## 계약의 범위
 
 - **공통 헤더**: 모든 plugin이 읽거나 쓸 수 있는 헤더 이름과 사용 규칙
 - **lifecycle 훅**: `on_request_headers`, `on_request_body`, `on_response_headers`, `on_response_body`, `on_log`
+- **실제 코드 매핑**: 문서상 훅 분류와 `proxy-wasm` trait 메서드의 대응 관계는 [Proxy-Wasm Hook Mapping](proxy-wasm-hook-mapping.md) 참고
 - **에러 응답 형식**: 차단 응답의 JSON 구조
 - **실패 정책**: `fail-open`, `fail-close`, `fail-static-response` 동작 정의
 - **버전 호환성**: revision 활성화 전 plugin version 검증 요건

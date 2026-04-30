@@ -19,7 +19,7 @@ control plane은 외부에 존재한다고 가정하며, 데이터 플레인은 
 
 ## 핵심 원칙
 
-- 이 프로젝트는 ngx_wasm_module 사용한다. Nginx + WASM(Rust)
+- 이 프로젝트는 ngx_wasm_module(Proxy-Wasm ABI) 사용한다. Nginx + WASM(Rust)
 - 데이터 플레인 영역만 개발한다. 즉, nginx + wsam 영역만 구현한다.
 - config는 두 가지 방법이 존재한다.
   - static하게 특정 파일 위치의 config 파일을 로딩하여 사용한다.
