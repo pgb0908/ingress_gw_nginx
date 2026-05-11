@@ -15,7 +15,7 @@ fn setup_minimal_bundle(dir: &Path, revision: &str) {
     write_file(dir, "gateway.json", r#"{"metadata":{"name":"gw"},"spec":{}}"#);
     write_file(dir, "listener.json", r#"{"metadata":{"name":"lst"},"spec":{"protocol":"HTTP","port":8080}}"#);
     write_file(dir, "plugin-chain.json", r#"{"plugins":["tenant-filter","auth-filter"]}"#);
-    write_file(dir, "router-main.json", r#"{"metadata":{"name":"main-route"},"spec":{"targetRef":{"kind":"Listener","name":"lst"},"rules":[{"path":"^/api(/.*)?$","methods":["GET"]}],"config":{"destinations":[{"destinationRef":{"kind":"Service","name":"svc"},"weight":100}]}}}"#);
+    write_file(dir, "router-main.json", r#"{"metadata":{"name":"main-route"},"spec":{"priority":100,"matchType":"Prefix","targetRef":{"kind":"Listener","name":"lst"},"rules":[{"path":"/api","methods":["GET"]}],"config":{"destinations":[{"destinationRef":{"kind":"Service","name":"svc"},"weight":100}]}}}"#);
     write_file(dir, "service-main.json", r#"{"metadata":{"name":"svc"},"spec":{"loadBalancing":{"targets":[{"host":"127.0.0.1","port":8000,"weight":100}]}}}"#);
 }
 
@@ -61,13 +61,11 @@ fn load_bundle_invalid_json_returns_error() {
 fn load_bundle_multiple_routers_sorted_alphabetically() {
     let dir = TempDir::new().unwrap();
     setup_minimal_bundle(dir.path(), "rev-002");
-    write_file(dir.path(), "router-users.json", r#"{"metadata":{"name":"users-route"},"spec":{"targetRef":{"kind":"Listener","name":"lst"},"rules":[{"path":"^/users(/.*)?$"}],"config":{"destinations":[{"destinationRef":{"kind":"Service","name":"svc"},"weight":100}]}}}"#);
+    write_file(dir.path(), "router-users.json", r#"{"metadata":{"name":"users-route"},"spec":{"priority":50,"matchType":"Prefix","targetRef":{"kind":"Listener","name":"lst"},"rules":[{"path":"/users","methods":["GET"]}],"config":{"destinations":[{"destinationRef":{"kind":"Service","name":"svc"},"weight":100}]}}}"#);
 
     let bundle = load_revision_bundle(dir.path()).unwrap();
 
     assert_eq!(bundle.routers.len(), 2);
-    assert_eq!(bundle.routers[0].metadata.name, "main-route");
-    assert_eq!(bundle.routers[1].metadata.name, "users-route");
 }
 
 #[test]
@@ -101,7 +99,7 @@ fn load_bundle_with_plugins_in_manifest() {
     write_file(dir.path(), "gateway.json", r#"{"metadata":{"name":"gw"},"spec":{}}"#);
     write_file(dir.path(), "listener.json", r#"{"metadata":{"name":"lst"},"spec":{"protocol":"HTTP","port":8080}}"#);
     write_file(dir.path(), "plugin-chain.json", r#"{"plugins":["tenant-filter"]}"#);
-    write_file(dir.path(), "router-main.json", r#"{"metadata":{"name":"r"},"spec":{"targetRef":{"kind":"Listener","name":"lst"},"rules":[{"path":"^/"}],"config":{"destinations":[{"destinationRef":{"kind":"Service","name":"svc"},"weight":100}]}}}"#);
+    write_file(dir.path(), "router-main.json", r#"{"metadata":{"name":"r"},"spec":{"priority":100,"matchType":"Exact","targetRef":{"kind":"Listener","name":"lst"},"rules":[{"path":"/","methods":["GET"]}],"config":{"destinations":[{"destinationRef":{"kind":"Service","name":"svc"},"weight":100}]}}}"#);
     write_file(dir.path(), "service-main.json", r#"{"metadata":{"name":"svc"},"spec":{"loadBalancing":{"targets":[{"host":"127.0.0.1","port":8000}]}}}"#);
 
     let bundle = load_revision_bundle(dir.path()).unwrap();

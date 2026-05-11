@@ -48,7 +48,7 @@ gateway_bin() {
 }
 
 upstream_bin() {
-  printf '%s\n' "$CARGO_TARGET_DIR/debug/mock_upstream"
+  printf '%s\n' "$CARGO_TARGET_DIR/debug/mock-upstream"
 }
 
 sample_revision_name() {

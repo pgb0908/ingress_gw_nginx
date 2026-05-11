@@ -16,11 +16,33 @@ pub struct Metadata {
 #[derive(Debug, Default, Deserialize)]
 pub struct GatewaySpec {
     #[serde(default)]
+    pub server: GatewayServer,
+    #[serde(default)]
     pub logging: GatewayLogging,
     #[serde(default)]
     pub tracing: GatewayTracing,
     #[serde(default)]
     pub metrics: GatewayMetrics,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GatewayServer {
+    #[serde(rename = "workerProcesses", default = "default_worker_processes")]
+    pub worker_processes: String,
+    #[serde(rename = "workerConnections", default = "default_worker_connections")]
+    pub worker_connections: u32,
+    #[serde(rename = "keepaliveConnections", default = "default_keepalive_connections")]
+    pub keepalive_connections: u32,
+}
+
+impl Default for GatewayServer {
+    fn default() -> Self {
+        Self {
+            worker_processes: default_worker_processes(),
+            worker_connections: default_worker_connections(),
+            keepalive_connections: default_keepalive_connections(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -309,6 +331,18 @@ fn default_failure_mode() -> String {
 
 fn default_policy_order() -> u16 {
     100
+}
+
+fn default_worker_processes() -> String {
+    "auto".to_string()
+}
+
+fn default_worker_connections() -> u32 {
+    1024
+}
+
+fn default_keepalive_connections() -> u32 {
+    32
 }
 
 fn default_metrics_path() -> String {

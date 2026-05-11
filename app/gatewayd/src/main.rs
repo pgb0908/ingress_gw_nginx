@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use gatewayd::{runtime::GatewayRuntime, server, state};
+use gatewayd::{runtime::{self, GatewayRuntime}, server};
 use std::path::PathBuf;
 
 fn build_sha() -> &'static str {
@@ -39,7 +39,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Status => {
-            let state = state::load_state()?;
+            let state = runtime::load_state()?;
             println!("{}", serde_json::to_string_pretty(&state)?);
         }
         Commands::Version => {

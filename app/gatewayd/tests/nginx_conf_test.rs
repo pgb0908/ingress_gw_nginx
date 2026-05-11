@@ -6,6 +6,10 @@ use tempfile::TempDir;
 
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
+fn lock() -> std::sync::MutexGuard<'static, ()> {
+    ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 fn make_bundle(root: &std::path::Path) -> RevisionBundle {
     let mut services = HashMap::new();
     services.insert(
@@ -49,9 +53,11 @@ fn make_bundle(root: &std::path::Path) -> RevisionBundle {
         routers: vec![RouterDocument {
             metadata: Metadata { name: "api-route".to_string() },
             spec: RouterSpec {
+                priority: 100,
+                match_type: PathMatchType::Prefix,
                 target_ref: TargetRef { kind: "Listener".to_string(), name: "lst".to_string() },
                 rules: vec![RouterRule {
-                    path: "^/api(/.*)?$".to_string(),
+                    path: "/api".to_string(),
                     methods: vec!["GET".to_string(), "POST".to_string()],
                 }],
                 config: RouterConfig {
@@ -67,13 +73,17 @@ fn make_bundle(root: &std::path::Path) -> RevisionBundle {
         }],
         services,
         policies: vec![],
-        plugin_chain: vec!["tenant-filter".to_string(), "auth-filter".to_string()],
+        plugin_chain: vec![
+            "tenant-filter".to_string(),
+            "auth-filter".to_string(),
+            "header-filter".to_string(),
+        ],
     }
 }
 
 #[test]
-fn build_conf_wasm_block_declares_all_five_filters() {
-    let _g = ENV_LOCK.lock().unwrap();
+fn build_conf_wasm_block_declares_plugin_chain_filters() {
+    let _g = lock();
     let dir = TempDir::new().unwrap();
     unsafe { std::env::set_var("GATEWAY_ROOT", dir.path()); }
 
@@ -81,14 +91,14 @@ fn build_conf_wasm_block_declares_all_five_filters() {
     unsafe { std::env::remove_var("GATEWAY_ROOT"); }
 
     assert!(conf.contains("wasm {"), "missing wasm block");
-    for filter in ["tenant_filter", "auth_filter", "header_filter", "rate_limit_filter", "observe_filter"] {
-        assert!(conf.contains(&format!("module {filter}")), "missing module declaration for {filter}");
-    }
+    assert!(conf.contains("module tenant_filter"), "missing tenant_filter module");
+    assert!(conf.contains("module auth_filter"), "missing auth_filter module");
+    assert!(!conf.contains("module rate_limit_filter"), "unexpected rate_limit_filter module");
 }
 
 #[test]
 fn build_conf_upstream_block_matches_service_targets() {
-    let _g = ENV_LOCK.lock().unwrap();
+    let _g = lock();
     let dir = TempDir::new().unwrap();
     unsafe { std::env::set_var("GATEWAY_ROOT", dir.path()); }
 
@@ -97,11 +107,28 @@ fn build_conf_upstream_block_matches_service_targets() {
 
     assert!(conf.contains("upstream svc_api-svc"), "missing upstream block");
     assert!(conf.contains("127.0.0.1:9000 weight=100"), "missing upstream server directive");
+    assert!(conf.contains("keepalive 32"), "missing keepalive directive");
+}
+
+#[test]
+fn build_conf_performance_directives_present() {
+    let _g = lock();
+    let dir = TempDir::new().unwrap();
+    unsafe { std::env::set_var("GATEWAY_ROOT", dir.path()); }
+
+    let conf = NginxManager::new().build_conf(&make_bundle(dir.path())).unwrap();
+    unsafe { std::env::remove_var("GATEWAY_ROOT"); }
+
+    assert!(conf.contains("client_body_buffer_size  128k"), "missing client_body_buffer_size");
+    assert!(conf.contains("proxy_buffer_size        128k"), "missing proxy_buffer_size");
+    assert!(conf.contains("proxy_buffers            4 128k"), "missing proxy_buffers");
+    assert!(conf.contains("proxy_http_version       1.1"), "missing proxy_http_version 1.1");
+    assert!(!conf.contains("proxy_request_buffering off"), "proxy_request_buffering off must not be set with wasmx");
 }
 
 #[test]
 fn build_conf_server_listen_and_server_name() {
-    let _g = ENV_LOCK.lock().unwrap();
+    let _g = lock();
     let dir = TempDir::new().unwrap();
     unsafe { std::env::set_var("GATEWAY_ROOT", dir.path()); }
 
@@ -114,7 +141,7 @@ fn build_conf_server_listen_and_server_name() {
 
 #[test]
 fn build_conf_location_has_proxy_wasm_chain_and_proxy_pass() {
-    let _g = ENV_LOCK.lock().unwrap();
+    let _g = lock();
     let dir = TempDir::new().unwrap();
     unsafe { std::env::set_var("GATEWAY_ROOT", dir.path()); }
 
@@ -123,13 +150,13 @@ fn build_conf_location_has_proxy_wasm_chain_and_proxy_pass() {
 
     assert!(conf.contains("proxy_wasm tenant_filter"), "missing tenant_filter directive");
     assert!(conf.contains("proxy_wasm auth_filter"), "missing auth_filter directive");
-    assert!(conf.contains("proxy_wasm observe_filter"), "missing observe_filter directive");
+    assert!(!conf.contains("proxy_wasm observe_filter"), "observe_filter not in chain, should be absent");
     assert!(conf.contains("proxy_pass http://svc_api-svc"), "missing proxy_pass");
 }
 
 #[test]
 fn build_conf_empty_allowed_hostnames_uses_catch_all() {
-    let _g = ENV_LOCK.lock().unwrap();
+    let _g = lock();
     let dir = TempDir::new().unwrap();
     unsafe { std::env::set_var("GATEWAY_ROOT", dir.path()); }
 
@@ -143,7 +170,7 @@ fn build_conf_empty_allowed_hostnames_uses_catch_all() {
 
 #[test]
 fn build_conf_revision_embedded_in_header_filter_config() {
-    let _g = ENV_LOCK.lock().unwrap();
+    let _g = lock();
     let dir = TempDir::new().unwrap();
     unsafe { std::env::set_var("GATEWAY_ROOT", dir.path()); }
 
@@ -155,7 +182,7 @@ fn build_conf_revision_embedded_in_header_filter_config() {
 
 #[test]
 fn build_conf_metrics_and_status_internal_locations_present() {
-    let _g = ENV_LOCK.lock().unwrap();
+    let _g = lock();
     let dir = TempDir::new().unwrap();
     unsafe { std::env::set_var("GATEWAY_ROOT", dir.path()); }
 

@@ -1,7 +1,6 @@
 use crate::models::PluginManifest;
 use crate::revision::load_revision_bundle;
-use crate::runtime::{DeployError, GatewayRuntime};
-use crate::state::load_state;
+use crate::runtime::{DeployError, GatewayRuntime, load_state};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -204,42 +203,24 @@ fn build_config_snapshot(revision_path: &Path) -> Result<ConfigSnapshot> {
         allowed_hostnames: bundle.listener.spec.allowed_hostnames.clone(),
     };
 
-    let routers = bundle
-        .routers
-        .iter()
+    let routers = bundle.routers.iter()
         .map(|r| {
-            let destination = r
-                .spec
-                .config
-                .destinations
-                .first()
+            let destination = r.spec.config.destinations.first()
                 .map(|d| d.destination_ref.name.clone())
                 .unwrap_or_default();
             RouterSnapshot {
                 name: r.metadata.name.clone(),
-                rules: r
-                    .spec
-                    .rules
-                    .iter()
-                    .map(|rule| RuleSnapshot {
-                        path: rule.path.clone(),
-                        methods: rule.methods.clone(),
-                    })
+                rules: r.spec.rules.iter()
+                    .map(|rule| RuleSnapshot { path: rule.path.clone(), methods: rule.methods.clone() })
                     .collect(),
                 destination,
             }
         })
         .collect();
 
-    let services = bundle
-        .services
-        .iter()
+    let services = bundle.services.iter()
         .map(|(name, svc)| {
-            let targets = svc
-                .spec
-                .load_balancing
-                .targets
-                .iter()
+            let targets = svc.spec.load_balancing.targets.iter()
                 .map(|t| TargetSnapshot { host: t.host.clone(), port: t.port, weight: t.weight })
                 .collect();
             (name.clone(), ServiceSnapshot { targets })

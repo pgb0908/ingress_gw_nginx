@@ -1,5 +1,5 @@
 use gatewayd::models::{ReloadStatus, RuntimeState, ValidationSnapshot};
-use gatewayd::state::{load_state, save_state};
+use gatewayd::runtime::{load_state, save_state};
 use std::sync::Mutex;
 use tempfile::TempDir;
 

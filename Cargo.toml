@@ -1,11 +1,12 @@
 [workspace]
 members = [
     "app/gatewayd",
-    "app/tenant-filter",
-    "app/auth-filter",
-    "app/header-filter",
-    "app/rate-limit-filter",
-    "app/observe-filter",
+    "app/mock-upstream",
+    "app/filters/tenant-filter",
+    "app/filters/auth-filter",
+    "app/filters/header-filter",
+    "app/filters/rate-limit-filter",
+    "app/filters/observe-filter",
 ]
 resolver = "2"
 
