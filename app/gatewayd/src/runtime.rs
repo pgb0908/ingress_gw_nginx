@@ -1,9 +1,10 @@
-use crate::models::{DeployResult, LoadResult, ReloadStatus, RuntimeState, ValidationResult, ValidationSnapshot};
+use crate::models::{DeployResult, LoadResult, PathMatchType, ReloadStatus, RuntimeState, ValidationResult, ValidationSnapshot};
 use crate::nginx::NginxManager;
 use crate::paths;
 use crate::revision::load_revision_bundle;
 use crate::state::{load_state, save_state};
 use anyhow::{Context, Result};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
@@ -242,6 +243,8 @@ pub fn validate_bundle(revision_path: &Path, nginx: &NginxManager) -> Result<Val
         }
     }
 
+    validate_routers(&bundle.routers, &mut errors);
+
     let conf_path = nginx.render(&bundle)?;
     if let Err(error) = nginx.validate(&conf_path) {
         errors.push(error.to_string());
@@ -304,9 +307,7 @@ fn ensure_live_dir_initialized(live_dir: &Path, state: &RuntimeState) -> Result<
     fs::write(live_dir.join("revision.json"), serde_json::to_vec_pretty(&manifest)?)?;
 
     // plugin-chain.json 기본값 생성
-    let chain = serde_json::json!({
-        "plugins": ["tenant-filter", "auth-filter", "header-filter", "rate-limit-filter", "observe-filter"]
-    });
+    let chain = serde_json::json!({ "plugins": [] });
     fs::write(live_dir.join("plugin-chain.json"), serde_json::to_vec_pretty(&chain)?)?;
 
     // 활성 revision의 plugins/, data/ 복사 (wasm 바이너리 재사용)
@@ -335,4 +336,51 @@ fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn validate_routers(routers: &[crate::models::RouterDocument], errors: &mut Vec<String>) {
+    let mut exact_paths: HashSet<String> = HashSet::new();
+    let mut prefix_paths: HashSet<String> = HashSet::new();
+    let mut regex_priorities: HashSet<u32> = HashSet::new();
+
+    for router in routers {
+        let name = &router.metadata.name;
+
+        for rule in &router.spec.rules {
+            if rule.methods.is_empty() {
+                errors.push(format!("Router '{name}': rule with path '{}' has empty methods", rule.path));
+            }
+        }
+
+        match router.spec.match_type {
+            PathMatchType::Exact | PathMatchType::Prefix => {
+                let type_name = if router.spec.match_type == PathMatchType::Exact { "Exact" } else { "Prefix" };
+                let seen = if router.spec.match_type == PathMatchType::Exact { &mut exact_paths } else { &mut prefix_paths };
+                for rule in &router.spec.rules {
+                    if !seen.insert(rule.path.clone()) {
+                        errors.push(format!(
+                            "Router '{name}': duplicate {type_name} path '{}' — already registered by another router",
+                            rule.path
+                        ));
+                    }
+                }
+            }
+            PathMatchType::Regex => {
+                if !regex_priorities.insert(router.spec.priority) {
+                    errors.push(format!(
+                        "Router '{name}': duplicate Regex priority {} — another Regex router has the same priority",
+                        router.spec.priority
+                    ));
+                }
+                for rule in &router.spec.rules {
+                    if let Err(e) = regex::Regex::new(&rule.path) {
+                        errors.push(format!(
+                            "Router '{name}': invalid regex '{}': {e}",
+                            rule.path
+                        ));
+                    }
+                }
+            }
+        }
+    }
 }

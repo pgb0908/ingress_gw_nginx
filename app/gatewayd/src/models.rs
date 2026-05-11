@@ -89,8 +89,18 @@ pub struct RouterDocument {
     pub spec: RouterSpec,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub enum PathMatchType {
+    Exact,
+    Prefix,
+    Regex,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RouterSpec {
+    pub priority: u32,
+    #[serde(rename = "matchType")]
+    pub match_type: PathMatchType,
     #[serde(rename = "targetRef")]
     pub target_ref: TargetRef,
     pub rules: Vec<RouterRule>,
@@ -106,7 +116,6 @@ pub struct TargetRef {
 #[derive(Debug, Deserialize)]
 pub struct RouterRule {
     pub path: String,
-    #[serde(default)]
     pub methods: Vec<String>,
 }
 

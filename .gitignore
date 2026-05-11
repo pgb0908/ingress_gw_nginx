@@ -4,6 +4,7 @@ env/cache/
 
 # Build output
 target/
+dist/
 runtime/current
 runtime/revisions/
 

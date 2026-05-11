@@ -1,0 +1,29 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Router",
+  "metadata": {
+    "name": "basic-router"
+  },
+  "spec": {
+    "priority": 100,
+    "matchType": "Exact",
+    "targetRef": {
+      "kind": "Listener",
+      "name": "default-listener"
+    },
+    "rules": [
+      {
+        "path": "/test",
+        "methods": ["GET"]
+      }
+    ],
+    "config": {
+      "destinations": [
+        {
+          "destinationRef": { "kind": "Service", "name": "backend" },
+          "weight": 100
+        }
+      ]
+    }
+  }
+}

@@ -1,4 +1,4 @@
-use crate::models::RevisionBundle;
+use crate::models::{PathMatchType, RevisionBundle};
 use crate::paths;
 use anyhow::{Context, Result};
 use std::fs;
@@ -99,20 +99,53 @@ impl NginxManager {
             bundle.listener.spec.allowed_hostnames.join(" ")
         };
 
-        let plugin_chain = bundle.plugin_chain.join(",");
+        let plugin_chain_str = bundle.plugin_chain.join(",");
 
         // Load data configs for wasm filter configuration
         let auth_config = load_json_or_empty(&bundle.root.join("data/secrets.json"));
         let rate_limit_config = load_json_or_empty(&bundle.root.join("data/rate-limit.json"));
         let header_config = format!(
             r#"{{"revision":"{}","plugin_chain":"{}"}}"#,
-            bundle.manifest.revision, plugin_chain
+            bundle.manifest.revision, plugin_chain_str
         );
 
-        // Escape single quotes for nginx config embedding
         let auth_config_escaped = auth_config.replace('\'', "\\'");
         let rate_limit_config_escaped = rate_limit_config.replace('\'', "\\'");
         let header_config_escaped = header_config.replace('\'', "\\'");
+
+        // wasm {} 블록: plugin_chain에 있는 필터만 포함
+        let filter_module_name = |name: &str| name.replace('-', "_");
+        let filter_config = |name: &str| -> Option<String> {
+            match name {
+                "auth-filter"        => Some(format!("'{auth_config_escaped}'")),
+                "header-filter"      => Some(format!("'{header_config_escaped}'")),
+                "rate-limit-filter"  => Some(format!("'{rate_limit_config_escaped}'")),
+                _                    => None,
+            }
+        };
+
+        let wasm_block = if bundle.plugin_chain.is_empty() {
+            String::new()
+        } else {
+            let module_lines = bundle.plugin_chain.iter()
+                .map(|name| format!(
+                    "    module {} {}/{}.wasm;",
+                    filter_module_name(name),
+                    plugins_dir.display(),
+                    name
+                ))
+                .collect::<Vec<_>>()
+                .join("\n");
+            format!("wasm {{\n{module_lines}\n}}\n\n")
+        };
+
+        let proxy_wasm_directives = bundle.plugin_chain.iter()
+            .map(|name| match filter_config(name) {
+                Some(cfg) => format!("            proxy_wasm {} {cfg};", filter_module_name(name)),
+                None      => format!("            proxy_wasm {};", filter_module_name(name)),
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
 
         let upstream_blocks = bundle
             .services
@@ -131,48 +164,53 @@ impl NginxManager {
             .collect::<Vec<_>>()
             .join("\n\n    ");
 
+        let mut ordered_routers: Vec<_> = bundle.routers.iter().collect();
+        ordered_routers.sort_by_key(|r| {
+            let type_order = match r.spec.match_type {
+                PathMatchType::Exact  => 0u8,
+                PathMatchType::Prefix => 1,
+                PathMatchType::Regex  => 2,
+            };
+            (type_order, std::cmp::Reverse(r.spec.priority))
+        });
+
         let mut locations = Vec::new();
-        for router in &bundle.routers {
+        for router in ordered_routers {
             let destination = &router.spec.config.destinations[0];
             let service = bundle
                 .services
                 .get(&destination.destination_ref.name)
                 .expect("service must exist");
-            let methods =
-                if router.spec.rules.iter().flat_map(|r| r.methods.iter()).count() == 0 {
-                    "GET POST".to_string()
-                } else {
-                    router
-                        .spec
-                        .rules
-                        .iter()
-                        .flat_map(|r| r.methods.iter().cloned())
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                };
+
+            let location_keyword = match router.spec.match_type {
+                PathMatchType::Exact => "location =",
+                PathMatchType::Prefix => "location ^~",
+                PathMatchType::Regex => "location ~",
+            };
+
             for (index, rule) in router.spec.rules.iter().enumerate() {
                 let route_id = format!("{}-{}", router.metadata.name, index);
+                let methods = rule.methods.join(" ");
+                let wasm_lines = if proxy_wasm_directives.is_empty() {
+                    String::new()
+                } else {
+                    format!("\n{proxy_wasm_directives}")
+                };
                 locations.push(format!(
-                    r#"location ~ {path} {{
+                    r#"{location_keyword} {path} {{
             set $gateway_route_seed "{route_id}";
             set $gateway_service_seed "{service_name}";
-            limit_except {methods} {{ deny all; }}
-            proxy_wasm tenant_filter;
-            proxy_wasm auth_filter '{auth_cfg}';
-            proxy_wasm header_filter '{header_cfg}';
-            proxy_wasm rate_limit_filter '{rl_cfg}';
-            proxy_wasm observe_filter;
+            limit_except {methods} {{ deny all; }}{wasm_lines}
             proxy_set_header X-Route-Id $gateway_route_seed;
             proxy_set_header X-Service-Id $gateway_service_seed;
             proxy_pass http://svc_{service_name};
         }}"#,
+                    location_keyword = location_keyword,
                     path = rule.path,
                     route_id = route_id,
                     service_name = service.metadata.name,
                     methods = methods,
-                    auth_cfg = auth_config_escaped,
-                    header_cfg = header_config_escaped,
-                    rl_cfg = rate_limit_config_escaped,
+                    wasm_lines = wasm_lines,
                 ));
             }
         }
@@ -182,13 +220,7 @@ impl NginxManager {
 pid logs/nginx.pid;
 error_log {bootstrap_error_log} info;
 
-wasm {{
-    module tenant_filter {plugins_dir}/tenant-filter.wasm;
-    module auth_filter {plugins_dir}/auth-filter.wasm;
-    module header_filter {plugins_dir}/header-filter.wasm;
-    module rate_limit_filter {plugins_dir}/rate-limit-filter.wasm;
-    module observe_filter {plugins_dir}/observe-filter.wasm;
-}}
+{wasm_block}
 
 events {{
     worker_connections  1024;
@@ -224,7 +256,7 @@ http {{
 }}
 "#,
             bootstrap_error_log = bootstrap_error_log.display(),
-            plugins_dir = plugins_dir.display(),
+            wasm_block = wasm_block,
             mime_types_path = mime_types_path.display(),
             access_log_path = access_log_path.display(),
             error_log_path = error_log_path.display(),
