@@ -241,11 +241,9 @@ impl NginxManager {
                 };
                 locations.push(format!(
                     r#"{location_keyword} {path} {{
-            set $gateway_route_seed "{route_id}";
-            set $gateway_service_seed "{service_name}";
             limit_except {methods} {{ deny all; }}{wasm_lines}
-            proxy_set_header X-Route-Id $gateway_route_seed;
-            proxy_set_header X-Service-Id $gateway_service_seed;
+            proxy_set_header X-Route-Id "{route_id}";
+            proxy_set_header X-Service-Id "{service_name}";
             proxy_pass http://svc_{service_name};
         }}"#,
                     location_keyword = location_keyword,
@@ -265,7 +263,9 @@ impl NginxManager {
         Ok(format!(
             r#"pcre_jit on;
 worker_processes  {worker_processes};
+worker_cpu_affinity auto;
 worker_rlimit_nofile {worker_rlimit_nofile};
+timer_resolution     100ms;
 pid logs/nginx.pid;
 error_log /dev/null crit;
 

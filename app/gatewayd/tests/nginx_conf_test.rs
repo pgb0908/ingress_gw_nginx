@@ -141,6 +141,8 @@ fn build_conf_performance_directives_present() {
     assert!(!conf.contains(" info;"), "logs should not be info level");
     assert!(!conf.contains(" warn;"), "logs should be fully silenced");
 
+    assert!(conf.contains("worker_cpu_affinity auto"), "missing worker_cpu_affinity auto");
+    assert!(conf.contains("timer_resolution     100ms"), "missing timer_resolution");
     assert!(conf.contains("pcre_jit on"), "missing pcre_jit");
     assert!(conf.contains("accept_mutex off"), "missing accept_mutex off");
     assert!(conf.contains("gzip                     off"), "missing gzip off");
@@ -179,6 +181,9 @@ fn build_conf_location_has_proxy_wasm_chain_and_proxy_pass() {
     assert!(conf.contains("proxy_wasm auth_filter"), "missing auth_filter directive");
     assert!(!conf.contains("proxy_wasm observe_filter"), "observe_filter not in chain, should be absent");
     assert!(conf.contains("proxy_pass http://svc_api-svc"), "missing proxy_pass");
+    assert!(!conf.contains("set $gateway_"), "set $ variables must be replaced with literals");
+    assert!(conf.contains(r#"proxy_set_header X-Route-Id "api-route-0""#), "X-Route-Id must be literal");
+    assert!(conf.contains(r#"proxy_set_header X-Service-Id "api-svc""#), "X-Service-Id must be literal");
 }
 
 #[test]
