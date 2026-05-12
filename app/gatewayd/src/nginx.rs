@@ -163,6 +163,10 @@ impl NginxManager {
             }
         };
 
+        let needs_request_buffering = bundle.manifest.plugins.iter()
+            .any(|p| p.hooks.iter().any(|h| h == "on_request_body"));
+        let request_buffering = if needs_request_buffering { "" } else { "proxy_request_buffering off;" };
+
         let wasm_block = if bundle.plugin_chain.is_empty() {
             String::new()
         } else {
@@ -256,7 +260,7 @@ impl NginxManager {
 
         let worker_processes = &bundle.gateway.spec.server.worker_processes;
         let worker_connections = bundle.gateway.spec.server.worker_connections;
-        let worker_rlimit_nofile = worker_connections.saturating_mul(2);
+        let worker_rlimit_nofile = worker_connections.saturating_mul(4);
 
         Ok(format!(
             r#"pcre_jit on;
@@ -300,11 +304,12 @@ http {{
     proxy_send_timeout       60s;
 
     client_body_buffer_size  128k;
-    proxy_buffer_size        128k;
-    proxy_buffers            4 128k;
-    proxy_busy_buffers_size  256k;
+    proxy_buffer_size        16k;
+    proxy_buffers            8 16k;
+    proxy_busy_buffers_size  32k;
     proxy_http_version       1.1;
     proxy_set_header         Connection "";
+    {request_buffering}
 
     access_log off;
     error_log /dev/null crit;
@@ -333,6 +338,7 @@ http {{
             upstream_blocks = upstream_blocks,
             listen_port = bundle.listener.spec.port,
             server_names = server_names,
+            request_buffering = request_buffering,
             metrics_path = bundle.gateway.spec.metrics.path,
             locations = locations.join("\n\n        ")
         ))

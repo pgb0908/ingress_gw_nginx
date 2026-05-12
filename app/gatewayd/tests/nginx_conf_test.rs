@@ -123,10 +123,10 @@ fn build_conf_performance_directives_present() {
     unsafe { std::env::remove_var("GATEWAY_ROOT"); }
 
     assert!(conf.contains("client_body_buffer_size  128k"), "missing client_body_buffer_size");
-    assert!(conf.contains("proxy_buffer_size        128k"), "missing proxy_buffer_size");
-    assert!(conf.contains("proxy_buffers            4 128k"), "missing proxy_buffers");
+    assert!(conf.contains("proxy_buffer_size        16k"), "missing proxy_buffer_size");
+    assert!(conf.contains("proxy_buffers            8 16k"), "missing proxy_buffers");
     assert!(conf.contains("proxy_http_version       1.1"), "missing proxy_http_version 1.1");
-    assert!(!conf.contains("proxy_request_buffering off"), "proxy_request_buffering off must not be set with wasmx");
+    assert!(conf.contains("proxy_request_buffering off"), "header-only filters: proxy_request_buffering must be off");
 
     assert!(conf.contains("sendfile                 on"), "missing sendfile");
     assert!(conf.contains("tcp_nopush               on"), "missing tcp_nopush");
@@ -218,4 +218,26 @@ fn build_conf_metrics_and_status_internal_locations_present() {
 
     assert!(conf.contains("/__gateway_status"), "missing status internal location");
     assert!(conf.contains("/metrics"), "missing metrics internal location");
+}
+
+#[test]
+fn build_conf_body_hook_filter_keeps_request_buffering_on() {
+    let _g = lock();
+    let dir = TempDir::new().unwrap();
+    unsafe { std::env::set_var("GATEWAY_ROOT", dir.path()); }
+
+    let mut bundle = make_bundle(dir.path());
+    bundle.manifest.plugins.push(PluginManifest {
+        name: "body-filter".to_string(),
+        version: "1.0.0".to_string(),
+        wasm_path: "plugins/body-filter.wasm".to_string(),
+        sha256: "test".to_string(),
+        failure_mode: "fail-open".to_string(),
+        hooks: vec!["on_request_body".to_string()],
+    });
+    let conf = NginxManager::new().build_conf(&bundle).unwrap();
+    unsafe { std::env::remove_var("GATEWAY_ROOT"); }
+
+    assert!(!conf.contains("proxy_request_buffering off"),
+        "body hook present: proxy_request_buffering must not be off");
 }

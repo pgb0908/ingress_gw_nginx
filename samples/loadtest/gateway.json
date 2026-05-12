@@ -6,7 +6,7 @@
     "server": {
       "workerProcesses": "4",
       "workerConnections": 4096,
-      "keepaliveConnections": 64
+      "keepaliveConnections": 1024
     }
   }
 }
