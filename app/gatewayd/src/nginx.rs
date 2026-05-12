@@ -132,9 +132,6 @@ impl NginxManager {
 
     pub fn build_conf(&self, bundle: &RevisionBundle) -> Result<String> {
         let mime_types_path = nginx_conf_dir().join("mime.types");
-        let access_log_path = log_dir().join("access.log");
-        let error_log_path = log_dir().join("error.log");
-        let bootstrap_error_log = log_dir().join("bootstrap-error.log");
         let plugins_dir = bundle.root.join("plugins");
 
         let server_names = if bundle.listener.spec.allowed_hostnames.is_empty() {
@@ -198,6 +195,9 @@ impl NginxManager {
                     ));
                 }
                 lines.push(format!("    keepalive {keepalive};"));
+                lines.push("    keepalive_requests 10000;".to_string());
+                lines.push("    keepalive_timeout  60s;".to_string());
+                lines.push("    keepalive_time     1h;".to_string());
                 lines.push("}".to_string());
                 lines.join("\n")
             })
@@ -256,16 +256,22 @@ impl NginxManager {
 
         let worker_processes = &bundle.gateway.spec.server.worker_processes;
         let worker_connections = bundle.gateway.spec.server.worker_connections;
+        let worker_rlimit_nofile = worker_connections.saturating_mul(2);
 
         Ok(format!(
-            r#"worker_processes  {worker_processes};
+            r#"pcre_jit on;
+worker_processes  {worker_processes};
+worker_rlimit_nofile {worker_rlimit_nofile};
 pid logs/nginx.pid;
-error_log {bootstrap_error_log} info;
+error_log /dev/null crit;
 
 {wasm_block}
 
 events {{
     worker_connections  {worker_connections};
+    use epoll;
+    multi_accept on;
+    accept_mutex off;
 }}
 
 http {{
@@ -273,22 +279,40 @@ http {{
     default_type  application/octet-stream;
     client_body_temp_path    client_body_temp;
     proxy_temp_path          proxy_temp;
-    client_body_buffer_size  128k;
 
+    sendfile                 on;
+    tcp_nopush               on;
+    tcp_nodelay              on;
+    keepalive_timeout        65;
+    keepalive_requests       10000;
+    server_tokens            off;
+
+    gzip                     off;
+    gzip_proxied             off;
+    client_max_body_size     1m;
+    client_header_timeout    10s;
+    client_body_timeout      30s;
+    send_timeout             30s;
+    reset_timedout_connection on;
+
+    proxy_connect_timeout    5s;
+    proxy_read_timeout       60s;
+    proxy_send_timeout       60s;
+
+    client_body_buffer_size  128k;
     proxy_buffer_size        128k;
     proxy_buffers            4 128k;
     proxy_busy_buffers_size  256k;
     proxy_http_version       1.1;
+    proxy_set_header         Connection "";
 
-    log_format gateway_json escape=json
-      '{{"timestamp":"$time_iso8601","remote_addr":"$remote_addr","method":"$request_method","path":"$request_uri","status":$status,"request_time":"$request_time","upstream_time":"$upstream_response_time"}}';
-    access_log {access_log_path} gateway_json;
-    error_log {error_log_path} info;
+    access_log off;
+    error_log /dev/null crit;
 
     {upstream_blocks}
 
     server {{
-        listen {listen_port};
+        listen {listen_port} backlog=4096;
         server_name {server_names};
 
         location = {metrics_path} {{
@@ -303,11 +327,9 @@ http {{
     }}
 }}
 "#,
-            bootstrap_error_log = bootstrap_error_log.display(),
+            worker_rlimit_nofile = worker_rlimit_nofile,
             wasm_block = wasm_block,
             mime_types_path = mime_types_path.display(),
-            access_log_path = access_log_path.display(),
-            error_log_path = error_log_path.display(),
             upstream_blocks = upstream_blocks,
             listen_port = bundle.listener.spec.port,
             server_names = server_names,

@@ -1,0 +1,10 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Listener",
+  "metadata": { "name": "loadtest-listener" },
+  "spec": {
+    "protocol": "HTTP",
+    "port": 18000,
+    "host": "0.0.0.0"
+  }
+}

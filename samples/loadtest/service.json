@@ -1,0 +1,13 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Service",
+  "metadata": { "name": "target" },
+  "spec": {
+    "protocol": "HTTP",
+    "loadBalancing": {
+      "targets": [
+        { "host": "192.168.11.58", "port": 80, "weight": 100 }
+      ]
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Router",
+  "metadata": { "name": "loadtest-router" },
+  "spec": {
+    "priority": 100,
+    "matchType": "Exact",
+    "targetRef": {
+      "kind": "Listener",
+      "name": "loadtest-listener"
+    },
+    "rules": [
+      {
+        "path": "/post",
+        "methods": ["POST"]
+      },
+      {
+        "path": "/get",
+        "methods": ["GET"]
+      }
+    ],
+    "config": {
+      "destinations": [
+        {
+          "destinationRef": { "kind": "Service", "name": "target" },
+          "weight": 100
+        }
+      ]
+    }
+  }
+}

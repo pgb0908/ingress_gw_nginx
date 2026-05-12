@@ -1,0 +1,12 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Gateway",
+  "metadata": { "name": "loadtest" },
+  "spec": {
+    "server": {
+      "workerProcesses": "4",
+      "workerConnections": 4096,
+      "keepaliveConnections": 64
+    }
+  }
+}

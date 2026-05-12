@@ -108,6 +108,9 @@ fn build_conf_upstream_block_matches_service_targets() {
     assert!(conf.contains("upstream svc_api-svc"), "missing upstream block");
     assert!(conf.contains("127.0.0.1:9000 weight=100"), "missing upstream server directive");
     assert!(conf.contains("keepalive 32"), "missing keepalive directive");
+    assert!(conf.contains("keepalive_requests 10000"), "missing upstream keepalive_requests");
+    assert!(conf.contains("keepalive_timeout  60s"), "missing upstream keepalive_timeout");
+    assert!(conf.contains("keepalive_time     1h"), "missing upstream keepalive_time");
 }
 
 #[test]
@@ -124,6 +127,29 @@ fn build_conf_performance_directives_present() {
     assert!(conf.contains("proxy_buffers            4 128k"), "missing proxy_buffers");
     assert!(conf.contains("proxy_http_version       1.1"), "missing proxy_http_version 1.1");
     assert!(!conf.contains("proxy_request_buffering off"), "proxy_request_buffering off must not be set with wasmx");
+
+    assert!(conf.contains("sendfile                 on"), "missing sendfile");
+    assert!(conf.contains("tcp_nopush               on"), "missing tcp_nopush");
+    assert!(conf.contains("tcp_nodelay              on"), "missing tcp_nodelay");
+    assert!(conf.contains("keepalive_timeout        65"), "missing keepalive_timeout");
+    assert!(conf.contains("keepalive_requests       10000"), "missing keepalive_requests");
+    assert!(conf.contains("use epoll"), "missing use epoll");
+    assert!(conf.contains("multi_accept on"), "missing multi_accept");
+    assert!(conf.contains("worker_rlimit_nofile"), "missing worker_rlimit_nofile");
+    assert!(conf.contains("access_log off"), "access_log should be off");
+    assert!(conf.contains("error_log /dev/null crit"), "error_log should be silenced");
+    assert!(!conf.contains(" info;"), "logs should not be info level");
+    assert!(!conf.contains(" warn;"), "logs should be fully silenced");
+
+    assert!(conf.contains("pcre_jit on"), "missing pcre_jit");
+    assert!(conf.contains("accept_mutex off"), "missing accept_mutex off");
+    assert!(conf.contains("gzip                     off"), "missing gzip off");
+    assert!(conf.contains("gzip_proxied             off"), "missing gzip_proxied off");
+    assert!(conf.contains("client_max_body_size     1m"), "missing client_max_body_size");
+    assert!(conf.contains("reset_timedout_connection on"), "missing reset_timedout_connection");
+    assert!(conf.contains("proxy_connect_timeout    5s"), "missing proxy_connect_timeout");
+    assert!(conf.contains("proxy_read_timeout       60s"), "missing proxy_read_timeout");
+    assert!(conf.contains("proxy_set_header         Connection \"\""), "missing Connection header reset");
 }
 
 #[test]
@@ -135,7 +161,8 @@ fn build_conf_server_listen_and_server_name() {
     let conf = NginxManager::new().build_conf(&make_bundle(dir.path())).unwrap();
     unsafe { std::env::remove_var("GATEWAY_ROOT"); }
 
-    assert!(conf.contains("listen 8080"), "missing listen directive");
+    assert!(conf.contains("listen 8080 backlog=4096"), "missing listen with backlog");
+    assert!(!conf.contains("reuseport"), "reuseport must not be set");
     assert!(conf.contains("server_name example.com"), "missing server_name");
 }
 
